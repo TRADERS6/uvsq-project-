@@ -701,9 +701,24 @@
         function updateNextClassCountdown() {
             const now = new Date();
             const upcoming = timetableData
-                .map(e => ({ ...e, startDate: new Date(e.start) }))
+                .map(e => ({ ...e, startDate: new Date(e.start), endDate: new Date(e.end) }))
                 .filter(e => e.startDate > now)
                 .sort((a, b) => a.startDate - b.startDate);
+
+            // Statut live : cours en cours, ou compte à rebours du prochain
+            const cdEl = document.getElementById('next-class-countdown');
+            const live = timetableData.find(e => now >= new Date(e.start) && now <= new Date(e.end));
+            if (live) {
+                cdEl.innerText = `En cours · fin ${formatTime(new Date(live.end))}`;
+            } else if (upcoming.length) {
+                const mins = Math.round((upcoming[0].startDate - now) / 60000);
+                if (mins < 1) cdEl.innerText = 'Démarrage imminent';
+                else if (mins < 60) cdEl.innerText = `Début dans ${mins || 1} min`;
+                else if (isSameDay(upcoming[0].startDate, now)) cdEl.innerText = `Début à ${formatTime(upcoming[0].startDate)}`;
+                else cdEl.innerText = `${upcoming[0].startDate.toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric' })} à ${formatTime(upcoming[0].startDate)}`;
+            } else {
+                cdEl.innerText = 'Rien à venir';
+            }
 
             const titleEl = document.getElementById('next-class-title');
             const roomEl = document.getElementById('next-class-room');
@@ -729,7 +744,12 @@
         }
 
         function startCountdownTimer() {
-            setInterval(() => updateNextClassCountdown(), 30000);
+            setInterval(() => {
+                updateNextClassCountdown();
+                // Re-rendu local (aucun réseau) : les cartes passent en « En cours »
+                // et le badge de cours finissant se met à jour sans toucher l'app
+                if (activeViewMode !== 'MONTH') renderTimetable();
+            }, 30000);
         }
     </script>
 </body>
