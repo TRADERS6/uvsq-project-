@@ -236,28 +236,21 @@
 
             <form id="settings-form" onsubmit="saveSettings(event)" class="space-y-4">
                 <div>
-                    <label class="block text-xs font-semibold text-slate-300 mb-1.5">ID Étudiant / Groupe (federationIds)</label>
+                    <label class="block text-xs font-semibold text-slate-300 mb-1.5">ID Étudiant (fid0 CELCAT)</label>
                     <input type="text" id="cfg-federation-id" required placeholder="ex: 22609743" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-brand-500 transition font-mono">
                     <p class="text-[11px] text-slate-500 mt-1">Identifiant unique extrait des requêtes CELCAT UVSQ.</p>
                 </div>
 
-                <div class="space-y-2">
-                    <label class="block text-xs font-semibold text-slate-300">Source des données</label>
-                    <div class="grid grid-cols-2 gap-2">
-                        <label class="flex items-center gap-2 bg-slate-950 p-3 rounded-xl border border-slate-800 cursor-pointer hover:border-slate-700">
-                            <input type="radio" name="source-mode" value="MOCK" id="mode-mock" checked class="text-brand-500 focus:ring-0">
-                            <span class="text-xs font-medium text-slate-200">Mode Démo / Mock</span>
-                        </label>
-                        <label class="flex items-center gap-2 bg-slate-950 p-3 rounded-xl border border-slate-800 cursor-pointer hover:border-slate-700">
-                            <input type="radio" name="source-mode" value="API" id="mode-api" class="text-brand-500 focus:ring-0">
-                            <span class="text-xs font-medium text-slate-200">API CELCAT (Direct)</span>
-                        </label>
-                    </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-300 mb-1.5">Identifiant ENT UVSQ (login LDAP)</label>
+                    <input type="text" id="cfg-api-user" placeholder="ex: 22609743" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-brand-500 transition font-mono">
+                    <p class="text-[11px] text-slate-500 mt-1">Souvent votre numéro étudiant ; utilisé pour le POST /LdapLogin/Logon sur edt.uvsq.fr.</p>
                 </div>
 
                 <div>
-                    <label class="block text-xs font-semibold text-slate-300 mb-1.5">URL du Serveur CELCAT</label>
-                    <input type="url" id="cfg-api-url" placeholder="https://edt.uvsq.fr/cal" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-brand-500 transition font-mono">
+                    <label class="block text-xs font-semibold text-slate-300 mb-1.5">Mot de passe ENT UVSQ</label>
+                    <input type="password" id="cfg-api-pass" autocomplete="off" placeholder="••••••••" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-brand-500 transition font-mono">
+                    <p class="text-[11px] text-slate-500 mt-1">Stocké sur votre téléphone, transmis chiffré à /api/edt. Alternative serveur : CELCAT_USERNAME / CELCAT_PASSWORD dans Vercel.</p>
                 </div>
 
                 <div class="pt-2 flex gap-2">
@@ -278,8 +271,9 @@
         // CONFIGURATION STATE
         let appConfig = {
             federationId: '22609743',
-            sourceMode: 'MOCK',
-            apiUrl: 'https://edt.uvsq.fr/cal'
+            sourceMode: 'API',
+            apiUser: '',
+            apiPass: ''
         };
 
         // APPLICATION STATE
@@ -313,21 +307,29 @@
 
         // CHARGEMENT / SAUVEGARDE CONFIG
         function loadSettings() {
+            // Purge des anciens caches contenant les données de démo (DUPONT / MARTIN)
+            Object.keys(localStorage).filter(k => k.startsWith('uvsq_edt_data_')).forEach(k => localStorage.removeItem(k));
+
             const saved = localStorage.getItem('uvsq_edt_config');
             if (saved) {
-                try { appConfig = { ...appConfig, ...JSON.parse(saved) }; } catch(e) {}
+                try {
+                    const parsed = JSON.parse(saved);
+                    // Force le mode API : toute config legacy en MOCK est ignorée
+                    if (parsed && parsed.sourceMode) parsed.sourceMode = 'API';
+                    appConfig = { ...appConfig, ...parsed };
+                } catch(e) {}
             }
             document.getElementById('cfg-federation-id').value = appConfig.federationId;
-            document.getElementById('cfg-api-url').value = appConfig.apiUrl;
-            if (appConfig.sourceMode === 'API') document.getElementById('mode-api').checked = true;
-            else document.getElementById('mode-mock').checked = true;
+            document.getElementById('cfg-api-user').value = appConfig.apiUser;
+            document.getElementById('cfg-api-pass').value = appConfig.apiPass;
         }
 
         function saveSettings(e) {
             e.preventDefault();
             appConfig.federationId = document.getElementById('cfg-federation-id').value.trim();
-            appConfig.apiUrl = document.getElementById('cfg-api-url').value.trim();
-            appConfig.sourceMode = document.querySelector('input[name="source-mode"]:checked').value;
+            appConfig.apiUser = document.getElementById('cfg-api-user').value.trim();
+            appConfig.apiPass = document.getElementById('cfg-api-pass').value;
+            appConfig.sourceMode = 'API';
             localStorage.setItem('uvsq_edt_config', JSON.stringify(appConfig));
             toggleSettingsModal(false);
             fetchTimetableData(true);
@@ -422,102 +424,83 @@
             updateNextClassCountdown();
         }
 
-        // CHARGEMENT DONNEES
-       async function fetchTimetableData(forceRefresh = false) {
-    const icon = document.getElementById('refresh-icon');
-    icon.classList.add('fa-spin');
-    updateStatus('Synchro Cloud UVSQ...', 'amber');
+                // CHARGEMENT DONNEES
+        async function fetchTimetableData(forceRefresh = false) {
+            const icon = document.getElementById('refresh-icon');
+            icon.classList.add('fa-spin');
+            updateStatus('Connexion UVSQ...', 'amber');
 
-    const cacheKey = `uvsq_edt_data_${appConfig.federationId}`;
-    const cached = localStorage.getItem(cacheKey);
+            // Purge de sécurité : tout ancien cache de données de démo est supprimé
+            Object.keys(localStorage).filter(k => k.startsWith('uvsq_edt_data_')).forEach(k => localStorage.removeItem(k));
 
-    if (!forceRefresh && cached) {
-        try {
-            timetableData = JSON.parse(cached);
-            updateStatus('Cache Local', 'emerald');
-            renderTimetable();
-            updateNextClassCountdown();
-            icon.classList.remove('fa-spin');
-            return;
-        } catch(e) {}
-    }
+            const cacheKey = `uvsq_edt_api_${appConfig.federationId}`;
+            let cache = null;
+            try { cache = JSON.parse(localStorage.getItem(cacheKey) || 'null'); } catch (e) { cache = null; }
+            const cacheFresh = cache && Array.isArray(cache.events) && (Date.now() - cache.fetchedAt) < 6 * 60 * 60 * 1000;
 
-    if (appConfig.sourceMode === 'MOCK') {
-        setTimeout(() => {
-            timetableData = generateMockCelcatData();
-            localStorage.setItem(cacheKey, JSON.stringify(timetableData));
-            updateStatus('Mode Démo', 'indigo');
-            renderTimetable();
-            updateNextClassCountdown();
-            icon.classList.remove('fa-spin');
-        }, 300);
-        return;
-    }
+            if (!forceRefresh && cacheFresh) {
+                timetableData = cache.events;
+                updateStatus('Cache Local (UVSQ)', 'emerald');
+                renderTimetable();
+                updateNextClassCountdown();
+                icon.classList.remove('fa-spin');
+                return;
+            }
 
-    try {
-        // Appel de ton propre micro-backend Vercel
-        const apiEndpoint = `/api/edt?id=${appConfig.federationId}`;
-        const response = await fetch(apiEndpoint);
-        
-        if (!response.ok) throw new Error('Erreur API Backend');
-        
-        const data = await response.json();
-        
-        if (data.success && data.events.length > 0) {
-            timetableData = data.events;
-            updateStatus('En Direct UVSQ (Cloud)', 'emerald');
-        } else {
-            // Fallback sur le mock si la page UVSQ ne renvoie rien de parsable pour l'instant
-            timetableData = generateMockCelcatData();
-            updateStatus('Données simulées (UVSQ vide)', 'amber');
+            try {
+                const response = await fetch(`/api/edt?id=${encodeURIComponent(appConfig.federationId)}`, {
+                    headers: {
+                        'x-celcat-user': appConfig.apiUser || '',
+                        'x-celcat-pass': appConfig.apiPass || ''
+                    }
+                });
+
+                const data = await response.json().catch(() => ({}));
+
+                if (response.ok && data.success && Array.isArray(data.events) && data.events.length > 0) {
+                    timetableData = data.events;
+                    localStorage.setItem(cacheKey, JSON.stringify({ events: timetableData, fetchedAt: Date.now() }));
+                    updateStatus('En Direct UVSQ (LDAP)', 'emerald');
+                } else {
+                    timetableData = [];
+                    showErrorState(data.message || (data.error === 'missing_credentials'
+                        ? "Identifiants UVSQ manquants : renseignez-les dans les paramètres (bouton engrenage)."
+                        : `Erreur API /api/edt (HTTP ${response.status}).`));
+                    updateStatus('API UVSQ : erreur', 'rose');
+                }
+            } catch (error) {
+                console.error('Erreur synchro UVSQ :', error);
+                if (cache && Array.isArray(cache.events) && cache.events.length > 0) {
+                    timetableData = cache.events;
+                    updateStatus('Hors-ligne (cache UVSQ)', 'amber');
+                } else {
+                    timetableData = [];
+                    showErrorState("Connexion à l'API impossible. Vérifiez le réseau, puis réessayez.");
+                    updateStatus('Hors-ligne', 'rose');
+                }
+            } finally {
+                renderTimetable();
+                updateNextClassCountdown();
+                icon.classList.remove('fa-spin');
+            }
         }
 
-        localStorage.setItem(cacheKey, JSON.stringify(timetableData));
-        localStorage.setItem('last_sync', new Date().toISOString());
-
-    } catch (error) {
-        console.error("Erreur synchro cloud :", error);
-        timetableData = cached ? JSON.parse(cached) : generateMockCelcatData();
-        updateStatus('Mode Secours (Hors-ligne)', 'rose');
-    } finally {
-        renderTimetable();
-        updateNextClassCountdown();
-        icon.classList.remove('fa-spin');
-    }
-}
-
-        function generateMockCelcatData() {
-            const events = [];
-            const monday = getStartOfWeek(selectedDate);
-            const modules = [
-                { title: 'GMP1 - Conception Mécanique (CAD)', prof: 'M. DUPONT', type: 'TP', room: 'Labo CAO B102' },
-                { title: 'GMP2 - Science des Matériaux', prof: 'Mme. MARTIN', type: 'CM', room: 'Amphi Laplace' },
-                { title: 'GMP3 - Dimensionnement Structures', prof: 'M. BENALI', type: 'TD', room: 'Salle A204' },
-                { title: 'GMP4 - Métrologie & Production', prof: 'M. LEFEBVRE', type: 'TP', room: 'Atelier U1' }
-            ];
-
-            for (let dayIdx = 0; dayIdx < 5; dayIdx++) {
-                const dayDate = new Date(monday);
-                dayDate.setDate(monday.getDate() + dayIdx);
-
-                const m1 = modules[dayIdx % modules.length];
-                const s1 = new Date(dayDate); s1.setHours(8, 0, 0);
-                const e1 = new Date(dayDate); e1.setHours(10, 0, 0);
-                events.push({ id: `${dayIdx}-1`, title: m1.title, type: m1.type, start: s1, end: e1, room: m1.room, prof: m1.prof });
-
-                const m2 = modules[(dayIdx + 1) % modules.length];
-                const s2 = new Date(dayDate); s2.setHours(10, 15, 0);
-                const e2 = new Date(dayDate); e2.setHours(12, 15, 0);
-                events.push({ id: `${dayIdx}-2`, title: m2.title, type: m2.type, start: s2, end: e2, room: m2.room, prof: m2.prof });
-            }
-            return events;
+        function showErrorState(msg) {
+            const emptyState = document.getElementById('empty-state');
+            emptyState.querySelector('h3').innerText = 'Impossible de récupérer les cours';
+            emptyState.querySelector('p').innerText = msg;
         }
 
         // RENDU VUES
+// RENDU VUES
         function renderTimetable() {
             const container = document.getElementById('timetable-container');
             const emptyState = document.getElementById('empty-state');
             const searchQuery = document.getElementById('search-input').value.toLowerCase();
+            if (timetableData.length > 0) {
+                emptyState.querySelector('h3').innerText = 'Aucun cours prévu';
+                emptyState.querySelector('p').innerText = 'Profitez de votre journée libre ou ajustez vos critères de recherche !';
+            }
             container.innerHTML = '';
 
             let filtered = timetableData.filter(evt => {
