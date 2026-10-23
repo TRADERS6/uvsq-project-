@@ -2,71 +2,46 @@ export default async function handler(req, res) {
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
 
-    if (req.method === 'OPTIONS') {
-        return res.status(200).end();
-    }
+    if (req.method === 'OPTIONS') return res.status(200).end();
 
     const studentId = req.query.id || '22609743';
+    // Identifiant exact extrait de ta capture d'écran CELCAT UVSQ
+    const cidParam = req.query.cid || '-1742253826;1073733534;175432540;108';
 
     try {
-        // 1. Définir la plage de dates (du début du mois actuel à la fin du mois suivant)
         const now = new Date();
         const startDate = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
         const endDate = new Date(now.getFullYear(), now.getMonth() + 2, 0).toISOString().split('T')[0];
 
-        // 2. Préparer les paramètres exacts attendus par CELCAT Web Publisher
         const params = new URLSearchParams();
         params.append('start', startDate);
         params.append('end', endDate);
-        params.append('resType', '104'); // Type étu/groupe UVSQ
+        params.append('resType', '104');
         params.append('calView', 'month');
         params.append('federationIds[]', studentId);
         params.append('colourScheme', '3');
 
-        // 3. Effectuer le scraping direct de l'endpoint d'événements CELCAT
-        const response = await fetch('https://edt.uvsq.fr/Home/GetCalendarData', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-                'X-Requested-With': 'XMLHttpRequest'
-            },
-            body: params.toString()
-        });
-
-        if (!response.ok) {
-            // Repli sur la page principale si l'endpoint JSON direct requiert une session
-            const fallbackResponse = await fetch(`https://edt.uvsq.fr/cal?vt=month&et=student&fid0=${studentId}`);
-            const htmlText = await fallbackResponse.text();
-            const events = parseHtmlFallback(htmlText);
-            
-            return res.status(200).json({ success: true, source: 'html_fallback', events });
-        }
-
-        const rawData = await response.json();
+        // Appel direct avec l'URL paramétrée de l'IUT GMP
+        const targetUrl = `https://edt.uvsq.fr/cal?vt=month&dt=${startDate}&et=student&cid=${encodeURIComponent(cidParam)}&fid0=${studentId}`;
         
-        // 4. Nettoyer et structurer les données reçues
-        const cleanEvents = (Array.isArray(rawData) ? rawData : []).map((evt, idx) => {
-            const descriptionParts = (evt.description || evt.title || '')
-                .split('<br />')
-                .map(s => s.replace(/<[^>]*>/g, '').trim())
-                .filter(Boolean);
-
-            return {
-                id: evt.id || `evt-${idx}`,
-                title: evt.title ? evt.title.split('\n')[0] : (descriptionParts[0] || 'Cours'),
-                type: extractType(evt.title || evt.description || ''),
-                start: evt.start,
-                end: evt.end,
-                room: extractRoom(descriptionParts),
-                prof: extractProf(descriptionParts)
-            };
+        const response = await fetch(targetUrl, {
+            headers: {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8'
+            }
         });
+
+        if (!response.ok) throw new Error(`Erreur HTTP UVSQ: ${response.status}`);
+
+        const htmlText = await response.text();
+        const events = parseCelcatHtmlPage(htmlText);
 
         return res.status(200).json({
             success: true,
-            count: cleanEvents.length,
-            events: cleanEvents
+            student: "Tounga Nana, Adriel Kynan",
+            group: "GMP1S1TP4",
+            count: events.length,
+            events: events
         });
 
     } catch (error) {
@@ -78,25 +53,49 @@ export default async function handler(req, res) {
     }
 }
 
-// Utilitaires d'extraction de texte
-function extractType(text) {
-    if (/TP/i.test(text)) return 'TP';
-    if (/TD/i.test(text)) return 'TD';
-    if (/CM/i.test(text)) return 'CM';
-    return 'TD';
+// Extraction propre des blocs d'événements CELCAT
+function parseCelcatHtmlPage(html) {
+    const events = [];
+    
+    // Extraction des scripts ou données JSON injectées dans la page par CELCAT
+    const jsonMatch = html.match(/events\s*:\s*(\[\s*\{.*?\}\s*\])/s);
+
+    if (jsonMatch && jsonMatch[1]) {
+        try {
+            const raw = JSON.parse(jsonMatch[1]);
+            return raw.map((item, idx) => {
+                // Découpage des lignes HTML (<br />) de chaque case de cours
+                const lines = (item.title || item.description || '')
+                    .split(/<br\s*\/?>|\n/)
+                    .map(l => l.replace(/<[^>]*>/g, '').trim())
+                    .filter(Boolean);
+
+                return {
+                    id: item.id || `evt-${idx}`,
+                    // Exemple ligne 1: "GMP1S1TP4 [GMP1S1TP4]" -> Type/Groupe
+                    // Ligne 2: "C015 ATELIER" ou "B103 - Mantes" -> Salle
+                    // Ligne 3: "MMPR107 Production méthodes" -> Matière
+                    // Ligne 4: "Bazin, Bruno / Vallery, Gaël" -> Professeur
+                    title: lines[2] || lines[0] || 'Cours GMP',
+                    type: extractCourseType(lines),
+                    start: item.start,
+                    end: item.end,
+                    room: lines[1] || 'Salle N/A',
+                    prof: lines[lines.length - 1] || 'Enseignant UVSQ',
+                    rawDetails: lines
+                };
+            });
+        } catch (e) {
+            console.error("Erreur parsing JSON interne CELCAT", e);
+        }
+    }
+    return events;
 }
 
-function extractRoom(parts) {
-    const room = parts.find(p => /salle|amphi|labo|atelier|b\d+/i.test(p));
-    return room || (parts.length > 1 ? parts[1] : 'Salle N/A');
-}
-
-function extractProf(parts) {
-    const prof = parts.find(p => /M\.|MME|PROF/i.test(p));
-    return prof || (parts.length > 2 ? parts[2] : 'UVSQ');
-}
-
-function parseHtmlFallback(html) {
-    // Analyse de secours
-    return [];
+function extractCourseType(lines) {
+    const fullText = lines.join(' ');
+    if (/\bTP\b/i.test(fullText)) return 'TP';
+    if (/\bTD\b/i.test(fullText)) return 'TD';
+    if (/\bCM\b/i.test(fullText)) return 'CM';
+    return 'TP';
 }
