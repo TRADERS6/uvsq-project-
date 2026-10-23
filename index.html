@@ -170,6 +170,9 @@
             </div>
         </div>
 
+        <!-- PERIOD LABEL (date précise affichée selon la vue) -->
+        <div id="period-label" class="text-xs font-bold text-white bg-slate-900/60 border border-slate-800 rounded-xl px-3 py-2 text-center capitalize">--</div>
+
         <!-- TIMETABLE DISPLAY CONTAINER -->
         <div id="timetable-container" class="space-y-3 py-1">
             <!-- Dynamic Timetable Cards Injection -->
@@ -532,7 +535,23 @@
                 renderMonthView(container, filtered);
             }
 
+            updatePeriodLabel();
             emptyState.classList.toggle('hidden', container.children.length > 0);
+        }
+
+        // BANDEAU DE PERIODE : date précise selon la vue active
+        function updatePeriodLabel() {
+            const el = document.getElementById('period-label');
+            const full = d => d.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+            if (activeViewMode === 'DAY') {
+                el.innerText = full(selectedDate);
+            } else if (activeViewMode === 'WEEK') {
+                const mon = getStartOfWeek(selectedDate);
+                const fri = new Date(mon); fri.setDate(mon.getDate() + 4);
+                el.innerText = `Semaine du ${mon.toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'long' })} au ${fri.toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'long', year: 'numeric' })}`;
+            } else {
+                el.innerText = selectedDate.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
+            }
         }
 
         function renderDayView(container, events, targetDate) {
@@ -545,6 +564,7 @@
         function renderWeekView(container, events) {
             const monday = getStartOfWeek(selectedDate);
             const dayNames = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi'];
+            const monthShort = selectedDate.toLocaleDateString('fr-FR', { month: 'short' });
 
             for (let i = 0; i < 5; i++) {
                 const currentDay = new Date(monday);
@@ -556,7 +576,7 @@
                 section.className = 'space-y-2';
                 section.innerHTML = `
                     <div class="text-xs font-bold uppercase tracking-wider text-slate-400 px-1 pt-2 flex items-center justify-between">
-                        <span>${dayNames[i]} ${currentDay.getDate()}</span>
+                        <span>${dayNames[i]} ${currentDay.getDate()} ${currentDay.toLocaleDateString('fr-FR', { month: 'short' })}</span>
                         <span class="text-[10px] text-slate-600 font-normal">${dayEvents.length} cours</span>
                     </div>
                 `;
