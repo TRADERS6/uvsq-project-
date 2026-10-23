@@ -1,0 +1,722 @@
+<!DOCTYPE html>
+<html lang="fr" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>UVSQ - EDT Express (CELCAT PWA)</title>
+    
+    <!-- iOS / Safari Native Web App Tags -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="EDT UVSQ">
+    <link rel="apple-touch-icon" href="https://placehold.co/180x180/2563eb/ffffff?text=EDT">
+    <meta name="theme-color" content="#030712">
+
+    <!-- Web App Manifest (PWA Android) -->
+    <link rel="manifest" href="data:application/json;base64,ewogICJuYW1lIjogIlVWV1EgRURUIEV4cHJlc3MiLAogICJzaG9ydF9uYW1lIjogIkVEVCBVVlNRIiwKICAic3RhcnRfdXJsIjogIi4iLAogICJkaXNwbGF5IjogInN0YW5kYWxvbmUiLAogICJiYWNrZ3JvdW5kX2NvbG9yIjogIiMwMzA3MTIiLAogICJ0aGVtZV9jb2xvcIjogIiMwMzA3MTIiCn0=">
+
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#f0f6ff',
+                            100: '#e0edff',
+                            500: '#3b82f6',
+                            600: '#2563eb',
+                            700: '#1d4ed8',
+                            900: '#0f172a',
+                            950: '#030712'
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['-apple-system', 'BlinkMacSystemFont', 'Inter', 'SF Pro Text', 'system-ui', 'sans-serif']
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- FontAwesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body {
+            -webkit-tap-highlight-color: transparent;
+            user-select: none;
+            overscroll-behavior-y: none;
+            padding-top: env(safe-area-inset-top);
+            padding-bottom: env(safe-area-inset-bottom);
+        }
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 4px;
+            height: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: rgba(15, 23, 42, 0.6);
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: rgba(51, 65, 85, 0.8);
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body class="bg-slate-950 text-slate-100 font-sans min-h-screen flex flex-col justify-between antialiased selection:bg-brand-500 selection:text-white pb-safe">
+
+    <!-- IOS INSTALLATION BANNER INSTRUCTION -->
+    <div id="ios-prompt" class="hidden bg-gradient-to-r from-brand-600 to-indigo-600 text-white px-4 py-2 text-xs flex items-center justify-between shadow-lg z-50">
+        <div class="flex items-center gap-2">
+            <i class="fa-solid fa-square-plus text-base"></i>
+            <span>Installez sur iPhone : appuyez sur <i class="fa-solid fa-share-from-square"></i> puis <strong>"Sur l'écran d'accueil"</strong></span>
+        </div>
+        <button onclick="dismissIosPrompt()" class="text-white/80 hover:text-white p-1">
+            <i class="fa-solid fa-xmark"></i>
+        </button>
+    </div>
+
+    <!-- TOP HEADER -->
+    <header class="sticky top-0 z-40 bg-slate-900/80 backdrop-blur-xl border-b border-slate-800/80 px-4 py-3 pt-safe">
+        <div class="max-w-4xl mx-auto flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-2xl bg-gradient-to-br from-brand-500 to-indigo-600 flex items-center justify-center text-white font-bold text-lg shadow-lg shadow-brand-500/20 active:scale-95 transition">
+                    <i class="fa-solid fa-calendar-days"></i>
+                </div>
+                <div>
+                    <h1 class="text-base font-bold tracking-tight text-white flex items-center gap-2">
+                        EDT Express <span class="text-[9px] uppercase font-bold tracking-wider bg-brand-500/10 text-brand-400 border border-brand-500/20 px-1.5 py-0.5 rounded-full">PWA Pro</span>
+                    </h1>
+                    <p class="text-[11px] text-slate-400 flex items-center gap-1.5" id="status-indicator">
+                        <span class="w-2 h-2 rounded-full bg-emerald-500 inline-block animate-pulse"></span>
+                        <span id="status-text">Synchronisé (Cache Local)</span>
+                    </p>
+                </div>
+            </div>
+
+            <!-- Header Action Controls -->
+            <div class="flex items-center gap-2">
+                <button id="btn-refresh" onclick="fetchTimetableData(true)" title="Actualiser l'emploi du temps" class="p-2.5 rounded-xl bg-slate-800/80 hover:bg-slate-700 text-slate-300 hover:text-white transition active:scale-90 border border-slate-700/50">
+                    <i class="fa-solid fa-rotate-right" id="refresh-icon"></i>
+                </button>
+                <button onclick="toggleSettingsModal(true)" title="Paramètres" class="p-2.5 rounded-xl bg-slate-800/80 hover:bg-slate-700 text-slate-300 hover:text-white transition active:scale-90 border border-slate-700/50">
+                    <i class="fa-solid fa-sliders"></i>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- MAIN CONTENT AREA -->
+    <main class="flex-1 max-w-4xl w-full mx-auto px-4 py-4 space-y-4">
+
+        <!-- NEXT CLASS COUNTDOWN BANNER -->
+        <div id="countdown-card" class="bg-gradient-to-r from-slate-900 via-slate-900 to-brand-950/50 border border-slate-800 rounded-2xl p-4 shadow-xl relative overflow-hidden">
+            <div class="absolute -right-10 -bottom-10 w-32 h-32 bg-brand-500/10 rounded-full blur-2xl pointer-events-none"></div>
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 relative z-10">
+                <div class="space-y-1">
+                    <div class="flex items-center gap-2">
+                        <span class="text-[10px] font-bold uppercase tracking-wider text-brand-400 bg-brand-500/10 border border-brand-500/20 px-2 py-0.5 rounded-full">Prochain cours</span>
+                        <span id="next-class-countdown" class="text-xs font-mono font-bold text-amber-400">En cours...</span>
+                    </div>
+                    <h2 id="next-class-title" class="text-base sm:text-lg font-bold text-white truncate">Chargement des cours...</h2>
+                    <p id="next-class-meta" class="text-xs text-slate-400 flex flex-wrap items-center gap-3">
+                        <span><i class="fa-solid fa-location-dot text-rose-400 mr-1"></i> <span id="next-class-room">--</span></span>
+                        <span><i class="fa-regular fa-clock text-brand-400 mr-1"></i> <span id="next-class-time">--:--</span></span>
+                        <span><i class="fa-solid fa-user-tie text-indigo-400 mr-1"></i> <span id="next-class-prof">--</span></span>
+                    </p>
+                </div>
+                <div class="flex items-center sm:self-center pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-800/80">
+                    <span id="next-class-badge" class="px-3 py-1.5 rounded-xl font-bold text-xs bg-slate-800 text-slate-300 border border-slate-700">--</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- VIEW SWITCHER (DAY / WEEK / MONTH) & NAVIGATION -->
+        <div class="space-y-3">
+            <div class="flex items-center justify-between bg-slate-900/80 p-1 rounded-2xl border border-slate-800">
+                <button onclick="setViewMode('DAY')" id="view-DAY" class="view-btn active flex-1 py-1.5 text-xs font-bold rounded-xl transition text-center bg-brand-600 text-white shadow-md">Jour</button>
+                <button onclick="setViewMode('WEEK')" id="view-WEEK" class="view-btn flex-1 py-1.5 text-xs font-medium text-slate-400 hover:text-white rounded-xl transition text-center">Semaine</button>
+                <button onclick="setViewMode('MONTH')" id="view-MONTH" class="view-btn flex-1 py-1.5 text-xs font-medium text-slate-400 hover:text-white rounded-xl transition text-center">Mois</button>
+            </div>
+
+            <!-- Day Selector Carousel -->
+            <div id="day-selector-container" class="flex items-center justify-between gap-2 bg-slate-900/60 p-1.5 rounded-2xl border border-slate-800">
+                <button onclick="changeDateOffset(-1)" class="p-2 rounded-xl hover:bg-slate-800 text-slate-400 hover:text-white transition active:scale-90">
+                    <i class="fa-solid fa-chevron-left"></i>
+                </button>
+                <div id="days-carousel" class="flex items-center gap-1.5 overflow-x-auto custom-scrollbar py-0.5 px-1 scroll-smooth">
+                    <!-- Dynamic Days JavaScript Injection -->
+                </div>
+                <button onclick="changeDateOffset(1)" class="p-2 rounded-xl hover:bg-slate-800 text-slate-400 hover:text-white transition active:scale-90">
+                    <i class="fa-solid fa-chevron-right"></i>
+                </button>
+            </div>
+
+            <!-- Search & Type Filter Controls -->
+            <div class="flex flex-col sm:flex-row gap-2">
+                <!-- Search Input -->
+                <div class="relative flex-1">
+                    <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500 text-xs"></i>
+                    <input type="text" id="search-input" oninput="renderTimetable()" placeholder="Rechercher une matière, prof, salle..." class="w-full bg-slate-900 border border-slate-800 rounded-xl pl-9 pr-4 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-brand-500 transition">
+                </div>
+
+                <!-- Filter Badges -->
+                <div class="flex items-center gap-1 overflow-x-auto pb-1 sm:pb-0">
+                    <button onclick="setFilter('ALL')" id="filter-ALL" class="filter-btn active px-3 py-1.5 rounded-xl text-xs font-medium border transition whitespace-nowrap bg-brand-600 text-white border-brand-500">Tous</button>
+                    <button onclick="setFilter('CM')" id="filter-CM" class="filter-btn px-3 py-1.5 rounded-xl text-xs font-medium border transition whitespace-nowrap bg-slate-900 text-slate-400 border-slate-800 hover:border-slate-700">CM</button>
+                    <button onclick="setFilter('TD')" id="filter-TD" class="filter-btn px-3 py-1.5 rounded-xl text-xs font-medium border transition whitespace-nowrap bg-slate-900 text-slate-400 border-slate-800 hover:border-slate-700">TD</button>
+                    <button onclick="setFilter('TP')" id="filter-TP" class="filter-btn px-3 py-1.5 rounded-xl text-xs font-medium border transition whitespace-nowrap bg-slate-900 text-slate-400 border-slate-800 hover:border-slate-700">TP</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- TIMETABLE DISPLAY CONTAINER -->
+        <div id="timetable-container" class="space-y-3 py-1">
+            <!-- Dynamic Timetable Cards Injection -->
+        </div>
+
+        <!-- EMPTY STATE -->
+        <div id="empty-state" class="hidden text-center py-12 px-4 bg-slate-900/40 rounded-2xl border border-slate-800/50">
+            <div class="w-16 h-16 mx-auto mb-3 rounded-full bg-slate-800/80 flex items-center justify-center text-slate-500 text-xl">
+                <i class="fa-solid fa-mug-hot"></i>
+            </div>
+            <h3 class="text-sm font-semibold text-white">Aucun cours prévu</h3>
+            <p class="text-xs text-slate-400 mt-1 max-w-xs mx-auto">Profitez de votre journée libre ou ajustez vos critères de recherche !</p>
+        </div>
+    </main>
+
+    <!-- EVENT DETAILS MODAL -->
+    <div id="event-modal" class="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4 hidden">
+        <div class="bg-slate-900 border border-slate-800 rounded-3xl max-w-md w-full p-6 shadow-2xl relative overflow-hidden space-y-4">
+            <div class="flex items-center justify-between pb-3 border-b border-slate-800">
+                <span id="modal-event-type" class="px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-brand-500/10 text-brand-400 border border-brand-500/20">--</span>
+                <button onclick="toggleEventModal(false)" class="text-slate-400 hover:text-white p-1 rounded-lg">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+            <div class="space-y-2">
+                <h3 id="modal-event-title" class="text-base font-bold text-white leading-snug">--</h3>
+                <p id="modal-event-time" class="text-xs font-mono text-brand-400 font-semibold"></p>
+            </div>
+            <div class="bg-slate-950/60 p-4 rounded-2xl border border-slate-800/80 space-y-3">
+                <div class="flex items-center gap-3 text-xs text-slate-300">
+                    <div class="w-8 h-8 rounded-xl bg-rose-500/10 text-rose-400 flex items-center justify-center flex-shrink-0">
+                        <i class="fa-solid fa-location-dot"></i>
+                    </div>
+                    <div>
+                        <p class="text-[10px] text-slate-500 font-semibold uppercase">Salle / Bâtiment</p>
+                        <p id="modal-event-room" class="font-bold text-white text-sm">--</p>
+                    </div>
+                </div>
+                <div class="flex items-center gap-3 text-xs text-slate-300 pt-2 border-t border-slate-800/50">
+                    <div class="w-8 h-8 rounded-xl bg-indigo-500/10 text-indigo-400 flex items-center justify-center flex-shrink-0">
+                        <i class="fa-solid fa-user-tie"></i>
+                    </div>
+                    <div>
+                        <p class="text-[10px] text-slate-500 font-semibold uppercase">Intervenant / Professeur</p>
+                        <p id="modal-event-prof" class="font-bold text-white text-sm">--</p>
+                    </div>
+                </div>
+            </div>
+            <button onclick="toggleEventModal(false)" class="w-full py-2.5 bg-slate-800 hover:bg-slate-700 text-white font-semibold rounded-xl text-xs transition">Fermer</button>
+        </div>
+    </div>
+
+    <!-- SETTINGS / CONFIGURATION MODAL -->
+    <div id="settings-modal" class="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4 hidden">
+        <div class="bg-slate-900 border border-slate-800 rounded-3xl max-w-md w-full p-6 shadow-2xl relative overflow-hidden">
+            <div class="flex items-center justify-between pb-4 border-b border-slate-800 mb-4">
+                <h3 class="text-base font-bold text-white flex items-center gap-2">
+                    <i class="fa-solid fa-gear text-brand-500"></i> Configuration CELCAT
+                </h3>
+                <button onclick="toggleSettingsModal(false)" class="text-slate-400 hover:text-white p-1 rounded-lg">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+
+            <form id="settings-form" onsubmit="saveSettings(event)" class="space-y-4">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-300 mb-1.5">ID Étudiant / Groupe (federationIds)</label>
+                    <input type="text" id="cfg-federation-id" required placeholder="ex: 22609743" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-brand-500 transition font-mono">
+                    <p class="text-[11px] text-slate-500 mt-1">Identifiant unique extrait des requêtes CELCAT UVSQ.</p>
+                </div>
+
+                <div class="space-y-2">
+                    <label class="block text-xs font-semibold text-slate-300">Source des données</label>
+                    <div class="grid grid-cols-2 gap-2">
+                        <label class="flex items-center gap-2 bg-slate-950 p-3 rounded-xl border border-slate-800 cursor-pointer hover:border-slate-700">
+                            <input type="radio" name="source-mode" value="MOCK" id="mode-mock" checked class="text-brand-500 focus:ring-0">
+                            <span class="text-xs font-medium text-slate-200">Mode Démo / Mock</span>
+                        </label>
+                        <label class="flex items-center gap-2 bg-slate-950 p-3 rounded-xl border border-slate-800 cursor-pointer hover:border-slate-700">
+                            <input type="radio" name="source-mode" value="API" id="mode-api" class="text-brand-500 focus:ring-0">
+                            <span class="text-xs font-medium text-slate-200">API CELCAT (Direct)</span>
+                        </label>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-300 mb-1.5">URL du Serveur CELCAT</label>
+                    <input type="url" id="cfg-api-url" placeholder="https://edt.uvsq.fr/cal" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-brand-500 transition font-mono">
+                </div>
+
+                <div class="pt-2 flex gap-2">
+                    <button type="button" onclick="toggleSettingsModal(false)" class="flex-1 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold rounded-xl text-xs transition">Annuler</button>
+                    <button type="submit" class="flex-1 py-2.5 bg-brand-600 hover:bg-brand-500 text-white font-semibold rounded-xl text-xs transition shadow-lg shadow-brand-500/20">Enregistrer</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- FOOTER -->
+    <footer class="bg-slate-900/40 border-t border-slate-800/60 py-3 px-4 text-center">
+        <p class="text-[11px] text-slate-500">UVSQ CELCAT PWA &bull; Optimisé iOS & Android &bull; IUT GMP / UVSQ</p>
+    </footer>
+
+    <!-- JAVASCRIPT APPLICATION LOGIC -->
+    <script>
+        // CONFIGURATION STATE
+        let appConfig = {
+            federationId: '22609743',
+            sourceMode: 'MOCK',
+            apiUrl: 'https://edt.uvsq.fr/cal'
+        };
+
+        // APPLICATION STATE
+        let selectedDate = new Date();
+        let activeViewMode = 'DAY';
+        let activeFilter = 'ALL';
+        let timetableData = [];
+
+        // INITIALISATION
+        window.addEventListener('load', () => {
+            checkIosPrompt();
+            loadSettings();
+            initDaysCarousel();
+            fetchTimetableData();
+            startCountdownTimer();
+        });
+
+        // DETECTEUR D'INSTALLATION IOS SAFARI
+        function checkIosPrompt() {
+            const isIos = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+            const isStandalone = window.navigator.standalone || window.matchMedia('(display-mode: standalone)').matches;
+            if (isIos && !isStandalone && !localStorage.getItem('ios_prompt_dismissed')) {
+                document.getElementById('ios-prompt').classList.remove('hidden');
+            }
+        }
+
+        function dismissIosPrompt() {
+            localStorage.setItem('ios_prompt_dismissed', 'true');
+            document.getElementById('ios-prompt').classList.add('hidden');
+        }
+
+        // CHARGEMENT / SAUVEGARDE CONFIG
+        function loadSettings() {
+            const saved = localStorage.getItem('uvsq_edt_config');
+            if (saved) {
+                try { appConfig = { ...appConfig, ...JSON.parse(saved) }; } catch(e) {}
+            }
+            document.getElementById('cfg-federation-id').value = appConfig.federationId;
+            document.getElementById('cfg-api-url').value = appConfig.apiUrl;
+            if (appConfig.sourceMode === 'API') document.getElementById('mode-api').checked = true;
+            else document.getElementById('mode-mock').checked = true;
+        }
+
+        function saveSettings(e) {
+            e.preventDefault();
+            appConfig.federationId = document.getElementById('cfg-federation-id').value.trim();
+            appConfig.apiUrl = document.getElementById('cfg-api-url').value.trim();
+            appConfig.sourceMode = document.querySelector('input[name="source-mode"]:checked').value;
+            localStorage.setItem('uvsq_edt_config', JSON.stringify(appConfig));
+            toggleSettingsModal(false);
+            fetchTimetableData(true);
+        }
+
+        function toggleSettingsModal(show) {
+            document.getElementById('settings-modal').classList.toggle('hidden', !show);
+        }
+
+        function toggleEventModal(show, evt = null) {
+            const modal = document.getElementById('event-modal');
+            if (show && evt) {
+                document.getElementById('modal-event-type').innerText = evt.type;
+                document.getElementById('modal-event-title').innerText = evt.title;
+                document.getElementById('modal-event-time').innerText = `${formatTime(new Date(evt.start))} - ${formatTime(new Date(evt.end))}`;
+                document.getElementById('modal-event-room').innerText = evt.room;
+                document.getElementById('modal-event-prof').innerText = evt.prof;
+            }
+            modal.classList.toggle('hidden', !show);
+        }
+
+        // HELPER DATE FORMAT CELCAT (YYYY-MM-DD)
+        function formatDate(date) {
+            const d = new Date(date);
+            let month = '' + (d.getMonth() + 1);
+            let day = '' + d.getDate();
+            const year = d.getFullYear();
+
+            if (month.length < 2) month = '0' + month;
+            if (day.length < 2) day = '0' + day;
+
+            return [year, month, day].join('-');
+        }
+
+        // SWITCH VUES (JOUR / SEMAINE / MOIS)
+        function setViewMode(mode) {
+            activeViewMode = mode;
+            document.querySelectorAll('.view-btn').forEach(btn => {
+                btn.classList.remove('bg-brand-600', 'text-white', 'shadow-md', 'font-bold');
+                btn.classList.add('text-slate-400', 'font-medium');
+            });
+            const activeBtn = document.getElementById(`view-${mode}`);
+            activeBtn.classList.remove('text-slate-400', 'font-medium');
+            activeBtn.classList.add('bg-brand-600', 'text-white', 'shadow-md', 'font-bold');
+
+            document.getElementById('day-selector-container').classList.toggle('hidden', mode === 'MONTH');
+            renderTimetable();
+        }
+
+        // CARROUSEL JOURS
+        function initDaysCarousel() {
+            const container = document.getElementById('days-carousel');
+            container.innerHTML = '';
+            const curr = new Date(selectedDate);
+            const firstDayOfWeek = new Date(curr.setDate(curr.getDate() - curr.getDay() + 1));
+            const dayNames = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam'];
+
+            for (let i = 0; i < 6; i++) {
+                const dayDate = new Date(firstDayOfWeek);
+                dayDate.setDate(firstDayOfWeek.getDate() + i);
+                const isToday = isSameDay(dayDate, new Date());
+                const isSelected = isSameDay(dayDate, selectedDate);
+
+                const btn = document.createElement('button');
+                btn.onclick = () => selectDate(dayDate);
+                btn.className = `flex flex-col items-center justify-center min-w-[52px] py-2 px-2 rounded-2xl transition border text-xs active:scale-95 ${
+                    isSelected 
+                        ? 'bg-brand-600 text-white font-bold border-brand-500 shadow-lg shadow-brand-500/20' 
+                        : isToday 
+                            ? 'bg-slate-800 text-brand-400 font-semibold border-brand-500/40' 
+                            : 'bg-slate-950/60 text-slate-400 border-slate-800 hover:border-slate-700'
+                }`;
+                btn.innerHTML = `
+                    <span class="text-[10px] uppercase tracking-wider opacity-80">${dayNames[i]}</span>
+                    <span class="text-sm font-bold mt-0.5">${dayDate.getDate()}</span>
+                `;
+                container.appendChild(btn);
+            }
+        }
+
+        function changeDateOffset(offset) {
+            if (activeViewMode === 'WEEK') selectedDate.setDate(selectedDate.getDate() + (offset * 7));
+            else selectedDate.setDate(selectedDate.getDate() + offset);
+            initDaysCarousel();
+            renderTimetable();
+        }
+
+        function selectDate(date) {
+            selectedDate = new Date(date);
+            initDaysCarousel();
+            renderTimetable();
+            updateNextClassCountdown();
+        }
+
+        // CHARGEMENT DONNEES
+       async function fetchTimetableData(forceRefresh = false) {
+    const icon = document.getElementById('refresh-icon');
+    icon.classList.add('fa-spin');
+    updateStatus('Synchro Cloud UVSQ...', 'amber');
+
+    const cacheKey = `uvsq_edt_data_${appConfig.federationId}`;
+    const cached = localStorage.getItem(cacheKey);
+
+    if (!forceRefresh && cached) {
+        try {
+            timetableData = JSON.parse(cached);
+            updateStatus('Cache Local', 'emerald');
+            renderTimetable();
+            updateNextClassCountdown();
+            icon.classList.remove('fa-spin');
+            return;
+        } catch(e) {}
+    }
+
+    if (appConfig.sourceMode === 'MOCK') {
+        setTimeout(() => {
+            timetableData = generateMockCelcatData();
+            localStorage.setItem(cacheKey, JSON.stringify(timetableData));
+            updateStatus('Mode Démo', 'indigo');
+            renderTimetable();
+            updateNextClassCountdown();
+            icon.classList.remove('fa-spin');
+        }, 300);
+        return;
+    }
+
+    try {
+        // Appel de ton propre micro-backend Vercel
+        const apiEndpoint = `/api/edt?id=${appConfig.federationId}`;
+        const response = await fetch(apiEndpoint);
+        
+        if (!response.ok) throw new Error('Erreur API Backend');
+        
+        const data = await response.json();
+        
+        if (data.success && data.events.length > 0) {
+            timetableData = data.events;
+            updateStatus('En Direct UVSQ (Cloud)', 'emerald');
+        } else {
+            // Fallback sur le mock si la page UVSQ ne renvoie rien de parsable pour l'instant
+            timetableData = generateMockCelcatData();
+            updateStatus('Données simulées (UVSQ vide)', 'amber');
+        }
+
+        localStorage.setItem(cacheKey, JSON.stringify(timetableData));
+        localStorage.setItem('last_sync', new Date().toISOString());
+
+    } catch (error) {
+        console.error("Erreur synchro cloud :", error);
+        timetableData = cached ? JSON.parse(cached) : generateMockCelcatData();
+        updateStatus('Mode Secours (Hors-ligne)', 'rose');
+    } finally {
+        renderTimetable();
+        updateNextClassCountdown();
+        icon.classList.remove('fa-spin');
+    }
+}
+
+        function generateMockCelcatData() {
+            const events = [];
+            const monday = getStartOfWeek(selectedDate);
+            const modules = [
+                { title: 'GMP1 - Conception Mécanique (CAD)', prof: 'M. DUPONT', type: 'TP', room: 'Labo CAO B102' },
+                { title: 'GMP2 - Science des Matériaux', prof: 'Mme. MARTIN', type: 'CM', room: 'Amphi Laplace' },
+                { title: 'GMP3 - Dimensionnement Structures', prof: 'M. BENALI', type: 'TD', room: 'Salle A204' },
+                { title: 'GMP4 - Métrologie & Production', prof: 'M. LEFEBVRE', type: 'TP', room: 'Atelier U1' }
+            ];
+
+            for (let dayIdx = 0; dayIdx < 5; dayIdx++) {
+                const dayDate = new Date(monday);
+                dayDate.setDate(monday.getDate() + dayIdx);
+
+                const m1 = modules[dayIdx % modules.length];
+                const s1 = new Date(dayDate); s1.setHours(8, 0, 0);
+                const e1 = new Date(dayDate); e1.setHours(10, 0, 0);
+                events.push({ id: `${dayIdx}-1`, title: m1.title, type: m1.type, start: s1, end: e1, room: m1.room, prof: m1.prof });
+
+                const m2 = modules[(dayIdx + 1) % modules.length];
+                const s2 = new Date(dayDate); s2.setHours(10, 15, 0);
+                const e2 = new Date(dayDate); e2.setHours(12, 15, 0);
+                events.push({ id: `${dayIdx}-2`, title: m2.title, type: m2.type, start: s2, end: e2, room: m2.room, prof: m2.prof });
+            }
+            return events;
+        }
+
+        // RENDU VUES
+        function renderTimetable() {
+            const container = document.getElementById('timetable-container');
+            const emptyState = document.getElementById('empty-state');
+            const searchQuery = document.getElementById('search-input').value.toLowerCase();
+            container.innerHTML = '';
+
+            let filtered = timetableData.filter(evt => {
+                if (activeFilter !== 'ALL' && evt.type !== activeFilter) return false;
+                if (searchQuery) {
+                    return evt.title.toLowerCase().includes(searchQuery) ||
+                           evt.room.toLowerCase().includes(searchQuery) ||
+                           evt.prof.toLowerCase().includes(searchQuery);
+                }
+                return true;
+            });
+
+            if (activeViewMode === 'DAY') {
+                renderDayView(container, filtered, selectedDate);
+            } else if (activeViewMode === 'WEEK') {
+                renderWeekView(container, filtered);
+            } else if (activeViewMode === 'MONTH') {
+                renderMonthView(container, filtered);
+            }
+
+            emptyState.classList.toggle('hidden', container.children.length > 0);
+        }
+
+        function renderDayView(container, events, targetDate) {
+            const dayEvents = events.filter(e => isSameDay(new Date(e.start), targetDate))
+                                    .sort((a, b) => new Date(a.start) - new Date(b.start));
+
+            dayEvents.forEach(evt => container.appendChild(createEventCard(evt)));
+        }
+
+        function renderWeekView(container, events) {
+            const monday = getStartOfWeek(selectedDate);
+            const dayNames = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi'];
+
+            for (let i = 0; i < 5; i++) {
+                const currentDay = new Date(monday);
+                currentDay.setDate(monday.getDate() + i);
+                const dayEvents = events.filter(e => isSameDay(new Date(e.start), currentDay))
+                                        .sort((a, b) => new Date(a.start) - new Date(b.start));
+
+                const section = document.createElement('div');
+                section.className = 'space-y-2';
+                section.innerHTML = `
+                    <div class="text-xs font-bold uppercase tracking-wider text-slate-400 px-1 pt-2 flex items-center justify-between">
+                        <span>${dayNames[i]} ${currentDay.getDate()}</span>
+                        <span class="text-[10px] text-slate-600 font-normal">${dayEvents.length} cours</span>
+                    </div>
+                `;
+
+                if (dayEvents.length === 0) {
+                    section.innerHTML += `<div class="p-3 text-xs text-slate-600 bg-slate-900/30 rounded-xl text-center">Aucun cours</div>`;
+                } else {
+                    dayEvents.forEach(evt => section.appendChild(createEventCard(evt)));
+                }
+                container.appendChild(section);
+            }
+        }
+
+        function renderMonthView(container, events) {
+            const grid = document.createElement('div');
+            grid.className = 'grid grid-cols-7 gap-1 bg-slate-900/80 p-2 rounded-2xl border border-slate-800 text-center text-xs';
+            
+            const daysHeader = ['L', 'M', 'M', 'J', 'V', 'S', 'D'];
+            daysHeader.forEach(d => grid.innerHTML += `<div class="font-bold text-slate-500 py-1">${d}</div>`);
+
+            const firstOfMonth = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), 1);
+            const startDay = (firstOfMonth.getDay() + 6) % 7;
+            const daysInMonth = new Date(selectedDate.getFullYear(), selectedDate.getMonth() + 1, 0).getDate();
+
+            for (let i = 0; i < startDay; i++) {
+                grid.innerHTML += `<div class="py-3 text-slate-800">.</div>`;
+            }
+
+            for (let day = 1; day <= daysInMonth; day++) {
+                const thisDate = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), day);
+                const hasEvents = events.some(e => isSameDay(new Date(e.start), thisDate));
+                const isSelected = isSameDay(thisDate, selectedDate);
+
+                const cell = document.createElement('button');
+                cell.onclick = () => { selectDate(thisDate); setViewMode('DAY'); };
+                cell.className = `py-2 rounded-xl flex flex-col items-center justify-center relative ${
+                    isSelected ? 'bg-brand-600 text-white font-bold' : 'hover:bg-slate-800 text-slate-300'
+                }`;
+                cell.innerHTML = `
+                    <span>${day}</span>
+                    ${hasEvents ? `<span class="w-1 h-1 rounded-full bg-amber-400 mt-0.5"></span>` : ''}
+                `;
+                grid.appendChild(cell);
+            }
+            container.appendChild(grid);
+        }
+
+        function createEventCard(evt) {
+            const card = document.createElement('div');
+            const now = new Date();
+            const start = new Date(evt.start);
+            const end = new Date(evt.end);
+            const isLive = now >= start && now <= end;
+
+            let borderHighlight = evt.type === 'TD' ? 'border-l-emerald-500' : evt.type === 'TP' ? 'border-l-amber-500' : 'border-l-blue-500';
+            if (isLive) borderHighlight = 'border-l-rose-500 ring-1 ring-rose-500/50 shadow-rose-500/10';
+
+            card.onclick = () => toggleEventModal(true, evt);
+            card.className = `bg-slate-900 border border-slate-800 rounded-2xl p-3.5 shadow-md flex flex-col gap-2 border-l-4 ${borderHighlight} transition active:scale-[0.98] cursor-pointer hover:border-slate-700`;
+            card.innerHTML = `
+                <div class="flex items-start justify-between gap-2">
+                    <div>
+                        <div class="flex items-center gap-1.5">
+                            <span class="inline-block px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider bg-slate-800 text-slate-300 border border-slate-700">${evt.type}</span>
+                            ${isLive ? '<span class="px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider bg-rose-500/10 text-rose-400 border border-rose-500/20 animate-pulse">En cours</span>' : ''}
+                        </div>
+                        <h3 class="text-xs sm:text-sm font-bold text-white leading-snug mt-1.5">${evt.title}</h3>
+                    </div>
+                    <div class="text-right flex-shrink-0">
+                        <div class="text-xs font-mono font-bold text-slate-200">${formatTime(start)}</div>
+                        <div class="text-[10px] font-mono text-slate-500">${formatTime(end)}</div>
+                    </div>
+                </div>
+                <div class="flex items-center justify-between text-[11px] text-slate-400 pt-1.5 border-t border-slate-800/60">
+                    <span class="font-semibold text-slate-200"><i class="fa-solid fa-location-dot text-rose-400 mr-1"></i>${evt.room}</span>
+                    <span class="text-slate-400"><i class="fa-solid fa-user-tie text-indigo-400 mr-1"></i>${evt.prof}</span>
+                </div>
+            `;
+            return card;
+        }
+
+        // HELPERS UTILS
+        function formatTime(date) {
+            return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        }
+
+        function getStartOfWeek(d) {
+            d = new Date(d);
+            const day = d.getDay();
+            const diff = d.getDate() - day + (day === 0 ? -6 : 1);
+            return new Date(d.setDate(diff));
+        }
+
+        function isSameDay(d1, d2) {
+            return d1.getFullYear() === d2.getFullYear() &&
+                   d1.getMonth() === d2.getMonth() &&
+                   d1.getDate() === d2.getDate();
+        }
+
+        function updateStatus(text, color) {
+            document.getElementById('status-text').innerText = text;
+            const dot = document.querySelector('#status-indicator span');
+            dot.className = `w-2 h-2 rounded-full inline-block ${
+                color === 'emerald' ? 'bg-emerald-500 animate-pulse' : 
+                color === 'amber' ? 'bg-amber-500 animate-pulse' : 
+                color === 'indigo' ? 'bg-indigo-500 animate-pulse' : 'bg-rose-500'
+            }`;
+        }
+
+        function setFilter(filter) {
+            activeFilter = filter;
+            document.querySelectorAll('.filter-btn').forEach(btn => {
+                btn.classList.remove('bg-brand-600', 'text-white', 'border-brand-500', 'font-medium');
+                btn.classList.add('bg-slate-900', 'text-slate-400', 'border-slate-800');
+            });
+            const activeBtn = document.getElementById(`filter-${filter}`);
+            activeBtn.classList.remove('bg-slate-900', 'text-slate-400', 'border-slate-800');
+            activeBtn.classList.add('bg-brand-600', 'text-white', 'border-brand-500');
+            renderTimetable();
+        }
+
+        function updateNextClassCountdown() {
+            const now = new Date();
+            const upcoming = timetableData
+                .map(e => ({ ...e, startDate: new Date(e.start) }))
+                .filter(e => e.startDate > now)
+                .sort((a, b) => a.startDate - b.startDate);
+
+            const titleEl = document.getElementById('next-class-title');
+            const roomEl = document.getElementById('next-class-room');
+            const timeEl = document.getElementById('next-class-time');
+            const profEl = document.getElementById('next-class-prof');
+            const badgeEl = document.getElementById('next-class-badge');
+
+            if (upcoming.length === 0) {
+                titleEl.innerText = "Aucun cours à venir";
+                roomEl.innerText = "--";
+                timeEl.innerText = "--:--";
+                profEl.innerText = "--";
+                badgeEl.innerText = "Libre";
+                return;
+            }
+
+            const next = upcoming[0];
+            titleEl.innerText = next.title;
+            roomEl.innerText = next.room;
+            timeEl.innerText = `${formatTime(new Date(next.start))} - ${formatTime(new Date(next.end))}`;
+            profEl.innerText = next.prof;
+            badgeEl.innerText = next.type;
+        }
+
+        function startCountdownTimer() {
+            setInterval(() => updateNextClassCountdown(), 30000);
+        }
+    </script>
+</body>
+</html>
