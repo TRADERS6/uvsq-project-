@@ -309,19 +309,21 @@
         let activeFilter = 'ALL';
         let timetableData = [];
 
-        // INITIALISATION
+        // INITIALISATION : chaque étape est isolée — une erreur d'une fonction
+        // d'init ne doit jamais empêcher le rendu et la synchro des cours
         window.addEventListener('load', () => {
-            checkIosPrompt();
-            loadSettings();
-            initDaysCarousel();
-            fetchTimetableData();
-            startCountdownTimer();
+            const safe = fn => { try { fn(); } catch (e) { console.warn('Init bloqué (non fatal) :', e); } };
+            safe(initDaysCarousel);   // affichage des jours d'abord, indépendant de tout le reste
+            safe(loadSettings);
+            safe(checkIosPrompt);
+            safe(fetchTimetableData);
+            safe(startCountdownTimer);
         });
 
         // DETECTEUR D'INSTALLATION IOS SAFARI
         function checkIosPrompt() {
             const isIos = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
-            const isStandalone = window.navigator.standalone || window.matchMedia('(display-mode: standalone)').matches;
+            const isStandalone = window.navigator.standalone || (typeof window.matchMedia === 'function' && window.matchMedia('(display-mode: standalone)').matches);
             if (isIos && !isStandalone && !localStorage.getItem('ios_prompt_dismissed')) {
                 document.getElementById('ios-prompt').classList.remove('hidden');
             }
@@ -389,11 +391,11 @@
         function toggleEventModal(show, evt = null) {
             const modal = document.getElementById('event-modal');
             if (show && evt) {
-                document.getElementById('modal-event-type').innerText = evt.type;
-                document.getElementById('modal-event-title').innerText = evt.title;
-                document.getElementById('modal-event-time').innerText = `${formatTime(new Date(evt.start))} - ${formatTime(new Date(evt.end))}`;
-                document.getElementById('modal-event-room').innerText = evt.room;
-                document.getElementById('modal-event-prof').innerText = evt.prof;
+                document.getElementById('modal-event-type').textContent = evt.type;
+                document.getElementById('modal-event-title').textContent = evt.title;
+                document.getElementById('modal-event-time').textContent = `${formatTime(new Date(evt.start))} - ${formatTime(new Date(evt.end))}`;
+                document.getElementById('modal-event-room').textContent = evt.room;
+                document.getElementById('modal-event-prof').textContent = evt.prof;
             }
             modal.classList.toggle('hidden', !show);
         }
@@ -541,8 +543,8 @@
 
         function showErrorState(msg) {
             const emptyState = document.getElementById('empty-state');
-            emptyState.querySelector('h3').innerText = 'Impossible de récupérer les cours';
-            emptyState.querySelector('p').innerText = msg;
+            emptyState.querySelector('h3').textContent = 'Impossible de récupérer les cours';
+            emptyState.querySelector('p').textContent = msg;
         }
 
         // RENDU VUES
@@ -552,8 +554,8 @@
             const emptyState = document.getElementById('empty-state');
             const searchQuery = document.getElementById('search-input').value.toLowerCase();
             if (timetableData.length > 0) {
-                emptyState.querySelector('h3').innerText = 'Aucun cours prévu';
-                emptyState.querySelector('p').innerText = 'Profitez de votre journée libre ou ajustez vos critères de recherche !';
+                emptyState.querySelector('h3').textContent = 'Aucun cours prévu';
+                emptyState.querySelector('p').textContent = 'Profitez de votre journée libre ou ajustez vos critères de recherche !';
             }
             container.innerHTML = '';
 
@@ -584,13 +586,13 @@
             const el = document.getElementById('period-label');
             const full = d => d.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
             if (activeViewMode === 'DAY') {
-                el.innerText = full(selectedDate);
+                el.textContent = full(selectedDate);
             } else if (activeViewMode === 'WEEK') {
                 const mon = getStartOfWeek(selectedDate);
                 const fri = new Date(mon); fri.setDate(mon.getDate() + 4);
-                el.innerText = `Semaine du ${mon.toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'long' })} au ${fri.toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'long', year: 'numeric' })}`;
+                el.textContent = `Semaine du ${mon.toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'long' })} au ${fri.toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'long', year: 'numeric' })}`;
             } else {
-                el.innerText = selectedDate.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
+                el.textContent = selectedDate.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
             }
         }
 
@@ -721,7 +723,7 @@
         }
 
         function updateStatus(text, color) {
-            document.getElementById('status-text').innerText = text;
+            document.getElementById('status-text').textContent = text;
             const dot = document.querySelector('#status-indicator span');
             dot.className = `w-2 h-2 rounded-full inline-block ${
                 color === 'emerald' ? 'bg-emerald-500 animate-pulse' : 
@@ -753,15 +755,15 @@
             const cdEl = document.getElementById('next-class-countdown');
             const live = timetableData.find(e => now >= new Date(e.start) && now <= new Date(e.end));
             if (live) {
-                cdEl.innerText = `En cours · fin ${formatTime(new Date(live.end))}`;
+                cdEl.textContent = `En cours · fin ${formatTime(new Date(live.end))}`;
             } else if (upcoming.length) {
                 const mins = Math.round((upcoming[0].startDate - now) / 60000);
-                if (mins < 1) cdEl.innerText = 'Démarrage imminent';
-                else if (mins < 60) cdEl.innerText = `Début dans ${mins || 1} min`;
-                else if (isSameDay(upcoming[0].startDate, now)) cdEl.innerText = `Début à ${formatTime(upcoming[0].startDate)}`;
-                else cdEl.innerText = `${upcoming[0].startDate.toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric' })} à ${formatTime(upcoming[0].startDate)}`;
+                if (mins < 1) cdEl.textContent = 'Démarrage imminent';
+                else if (mins < 60) cdEl.textContent = `Début dans ${mins || 1} min`;
+                else if (isSameDay(upcoming[0].startDate, now)) cdEl.textContent = `Début à ${formatTime(upcoming[0].startDate)}`;
+                else cdEl.textContent = `${upcoming[0].startDate.toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric' })} à ${formatTime(upcoming[0].startDate)}`;
             } else {
-                cdEl.innerText = 'Rien à venir';
+                cdEl.textContent = 'Rien à venir';
             }
 
             const titleEl = document.getElementById('next-class-title');
@@ -771,20 +773,20 @@
             const badgeEl = document.getElementById('next-class-badge');
 
             if (upcoming.length === 0) {
-                titleEl.innerText = "Aucun cours à venir";
-                roomEl.innerText = "--";
-                timeEl.innerText = "--:--";
-                profEl.innerText = "--";
-                badgeEl.innerText = "Libre";
+                titleEl.textContent = "Aucun cours à venir";
+                roomEl.textContent = "--";
+                timeEl.textContent = "--:--";
+                profEl.textContent = "--";
+                badgeEl.textContent = "Libre";
                 return;
             }
 
             const next = upcoming[0];
-            titleEl.innerText = next.title;
-            roomEl.innerText = next.room;
-            timeEl.innerText = `${formatTime(new Date(next.start))} - ${formatTime(new Date(next.end))}`;
-            profEl.innerText = next.prof;
-            badgeEl.innerText = next.type;
+            titleEl.textContent = next.title;
+            roomEl.textContent = next.room;
+            timeEl.textContent = `${formatTime(new Date(next.start))} - ${formatTime(new Date(next.end))}`;
+            profEl.textContent = next.prof;
+            badgeEl.textContent = next.type;
         }
 
         function startCountdownTimer() {
