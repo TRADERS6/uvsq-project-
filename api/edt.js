@@ -1,5 +1,5 @@
 export default async function handler(req, res) {
-    // Autoriser les requêtes CORS pour que ton appli mobile puisse y accéder partout
+    // Autoriser les requêtes CORS
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'GET');
 
@@ -9,7 +9,7 @@ export default async function handler(req, res) {
     try {
         const response = await fetch(targetUrl, {
             headers: {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
             }
         });
 
@@ -18,34 +18,14 @@ export default async function handler(req, res) {
         }
 
         const htmlText = await response.text();
+        
+        // Extraction des événements depuis le HTML CELCAT
+        const parsedEvents = extractCelcatEvents(htmlText);
 
-        // Traitement du HTML de CELCAT pour extraire les informations propres
-        // Ici, on structure les données prêtes pour l'application
-        let parsedEvents = [];
-
-        // Exemple de détection basique dans le texte HTML brut de l'UVSQ
-        // On recherche les modules ou libellés typiques de l'IUT GMP
-        if (htmlText.includes('GMP') || htmlText.includes('Amphi') || htmlText.includes('Salle')) {
-            // Si le serveur de l'UVSQ répond bien, on injecte les données dynamiques extraites
-            // (Tu pourras affiner le découpage textuel selon le retour exact de l'UVSQ)
-            parsedEvents = [
-                {
-                    id: "uvsq-live-1",
-                    title: "GMP - Cours Synchronisé UVSQ",
-                    type: "TD",
-                    start: new Date().toISOString(),
-                    end: new Date(Date.now() + 7200000).toISOString(),
-                    room: "IUT GMP (En direct)",
-                    prof: "UVSQ"
-                }
-            ];
-        }
-
-        // Si aucun événement n'est capté dans le HTML brut, on renvoie un tableau propre
         res.status(200).json({
             success: true,
-            source: "UVSQ Direct Backend",
-            events: parsedEvents.length > 0 ? parsedEvents : []
+            count: parsedEvents.length,
+            events: parsedEvents
         });
 
     } catch (error) {
@@ -55,4 +35,52 @@ export default async function handler(req, res) {
             events: []
         });
     }
+}
+
+// Fonction de parsing HTML CELCAT
+function extractCelcatEvents(html) {
+    const events = [];
+    
+    // CELCAT intègre souvent les événements sous forme de blocs JSON ou d'objets JavaScript dans le HTML
+    const jsonMatch = html.match(/events\s*:\s*(\[\s*\{.*?\}\s*\])/s);
+
+    if (jsonMatch && jsonMatch[1]) {
+        try {
+            const rawEvents = JSON.parse(jsonMatch[1]);
+            return rawEvents.map((e, index) => {
+                const titleParts = (e.title || '').split('\n').map(s => s.trim()).filter(Boolean);
+                
+                return {
+                    id: e.id || `evt-${index}`,
+                    title: titleParts[0] || 'Cours UVSQ',
+                    type: detectCourseType(e.title || ''),
+                    start: e.start,
+                    end: e.end,
+                    room: extractRoom(titleParts) || 'Voir ENT',
+                    prof: extractProf(titleParts) || 'UVSQ'
+                };
+            });
+        } catch (err) {
+            console.error("Erreur de lecture du JSON interne CELCAT:", err);
+        }
+    }
+
+    return events;
+}
+
+function detectCourseType(text) {
+    if (text.includes('TP')) return 'TP';
+    if (text.includes('TD')) return 'TD';
+    if (text.includes('CM')) return 'CM';
+    return 'TD';
+}
+
+function extractRoom(parts) {
+    const roomPart = parts.find(p => p.toLowerCase().includes('salle') || p.toLowerCase().includes('amphi') || p.toLowerCase().includes('labo') || p.toLowerCase().includes('atelier'));
+    return roomPart || (parts.length > 1 ? parts[1] : null);
+}
+
+function extractProf(parts) {
+    const profPart = parts.find(p => p.toUpperCase().startsWith('M.') || p.toUpperCase().startsWith('MME') || p.includes(' '));
+    return profPart || (parts.length > 2 ? parts[2] : null);
 }
