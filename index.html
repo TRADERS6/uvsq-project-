@@ -238,7 +238,13 @@
                 <div>
                     <label class="block text-xs font-semibold text-slate-300 mb-1.5">ID Étudiant (fid0 CELCAT)</label>
                     <input type="text" id="cfg-federation-id" required placeholder="ex: 22609743" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-brand-500 transition font-mono">
-                    <p class="text-[11px] text-slate-500 mt-1">Identifiant unique extrait des requêtes CELCAT UVSQ.</p>
+                    <p class="text-[11px] text-slate-500 mt-1">Votre numéro étudiant (fid0 présent dans l'URL edt.uvsq.fr).</p>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-300 mb-1.5">CID CELCAT (calendrier du groupe)</label>
+                    <input type="text" id="cfg-cid" placeholder="ex: -1742253826;1073733534;175432540;108" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-brand-500 transition font-mono">
+                    <p class="text-[11px] text-slate-500 mt-1">Valeur par défaut du groupe GMP1S1TP4. Testé : un cid inconnu renvoie quand même votre emploi du temps (celui-ci suit l'ID étudiant) —laissez la valeur par défaut si l'app fonctionne comme ça.</p>
                 </div>
 
                 <div>
@@ -271,6 +277,7 @@
         // CONFIGURATION STATE
         let appConfig = {
             federationId: '22609743',
+            cid: '-1742253826;1073733534;175432540;108',
             sourceMode: 'API',
             apiUser: '',
             apiPass: ''
@@ -320,13 +327,17 @@
                 } catch(e) {}
             }
             document.getElementById('cfg-federation-id').value = appConfig.federationId;
+            document.getElementById('cfg-cid').value = appConfig.cid;
             document.getElementById('cfg-api-user').value = appConfig.apiUser;
             document.getElementById('cfg-api-pass').value = appConfig.apiPass;
         }
 
         function saveSettings(e) {
             e.preventDefault();
-            appConfig.federationId = document.getElementById('cfg-federation-id').value.trim();
+            appConfig.federationId = document.getElementById('cfg-federation-id').value.trim() || '22609743';
+            // CID : uniquement des chiffres, tiret et points-virgules (format CELCAT)
+            const cidRaw = document.getElementById('cfg-cid').value.trim().replace(/\s+/g, '');
+            appConfig.cid = /^-?[0-9;]+$/.test(cidRaw) && cidRaw ? cidRaw : '-1742253826;1073733534;175432540;108';
             appConfig.apiUser = document.getElementById('cfg-api-user').value.trim();
             appConfig.apiPass = document.getElementById('cfg-api-pass').value;
             appConfig.sourceMode = 'API';
@@ -433,7 +444,7 @@
             // Purge de sécurité : tout ancien cache de données de démo est supprimé
             Object.keys(localStorage).filter(k => k.startsWith('uvsq_edt_data_')).forEach(k => localStorage.removeItem(k));
 
-            const cacheKey = `uvsq_edt_api_${appConfig.federationId}`;
+            const cacheKey = `uvsq_edt_api_${appConfig.federationId}_${appConfig.cid}`;
             let cache = null;
             try { cache = JSON.parse(localStorage.getItem(cacheKey) || 'null'); } catch (e) { cache = null; }
             const cacheFresh = cache && Array.isArray(cache.events) && (Date.now() - cache.fetchedAt) < 6 * 60 * 60 * 1000;
@@ -448,7 +459,7 @@
             }
 
             try {
-                const response = await fetch(`/api/edt?id=${encodeURIComponent(appConfig.federationId)}`, {
+                const response = await fetch(`/api/edt?id=${encodeURIComponent(appConfig.federationId)}&cid=${encodeURIComponent(appConfig.cid)}`, {
                     headers: {
                         'x-celcat-user': appConfig.apiUser || '',
                         'x-celcat-pass': appConfig.apiPass || ''

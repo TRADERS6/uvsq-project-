@@ -24,6 +24,15 @@ export default async function handler(req, res) {
     try {
         const events = await getAuthenticatedEvents(user, pass, studentId, cidParam);
 
+        if (events.length === 0) {
+            return res.status(200).json({
+                success: false,
+                error: 'no_events',
+                message: "CELCAT n'a retourné aucun cours : l'ID étudiant (fid0) ou le CID du groupe dans les paramètres de la PWA est probablement incorrect.",
+                events: []
+            });
+        }
+
         return res.status(200).json({
             success: true,
             source: 'celcat_uvsq',
