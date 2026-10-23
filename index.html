@@ -273,10 +273,16 @@
                     <p class="text-[11px] text-slate-500 mt-1">Stocké sur votre téléphone, transmis chiffré à /api/edt. Alternative serveur : CELCAT_USERNAME / CELCAT_PASSWORD dans Vercel.</p>
                 </div>
 
+                <div class="bg-slate-950/60 border border-slate-800 rounded-xl p-3">
+                    <p class="text-[11px] text-slate-500 leading-relaxed"><i class="fa-solid fa-lock text-emerald-500 mr-1"></i><strong class="text-slate-400">Confidentialité</strong> — vos identifiants restent stockés uniquement sur cet appareil (localStorage), jamais sur nos serveurs. Ils sont transmis chiffrés (HTTPS) à l'API à chaque synchronisation, utilisés à la volée pour le login LDAP UVSQ, et le serveur ne conserve rien (session en mémoire ~25 min, aucun stockage, aucune base de données). Aucun tiers autre que l'UVSQ (edt.uvsq.fr) et l'hébergeur (Vercel) n'est concerné.</p>
+                </div>
+
                 <div class="pt-2 flex gap-2">
                     <button type="button" onclick="toggleSettingsModal(false)" class="flex-1 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold rounded-xl text-xs transition">Annuler</button>
                     <button type="submit" class="flex-1 py-2.5 bg-brand-600 hover:bg-brand-500 text-white font-semibold rounded-xl text-xs transition shadow-lg shadow-brand-500/20">Enregistrer</button>
                 </div>
+
+                <button type="button" onclick="clearCredentials()" class="w-full py-2.5 bg-rose-950/40 hover:bg-rose-900/50 text-rose-300 border border-rose-900/40 font-semibold rounded-xl text-xs transition"><i class="fa-solid fa-trash-can mr-1.5"></i>Effacer mes identifiants de cet appareil</button>
             </form>
         </div>
     </div>
@@ -362,6 +368,22 @@
 
         function toggleSettingsModal(show) {
             document.getElementById('settings-modal').classList.toggle('hidden', !show);
+        }
+
+        // DÉCONNEXION RÉELLE : purge des identifiants + des caches de cours de cet appareil
+        function clearCredentials() {
+            if (!confirm('Effacer vos identifiants UVSQ et les cours mis en cache de cet appareil ?')) return;
+            appConfig.apiUser = '';
+            appConfig.apiPass = '';
+            localStorage.setItem('uvsq_edt_config', JSON.stringify(appConfig));
+            Object.keys(localStorage).filter(k => k.startsWith('uvsq_edt_api_')).forEach(k => localStorage.removeItem(k));
+            document.getElementById('cfg-api-user').value = '';
+            document.getElementById('cfg-api-pass').value = '';
+            timetableData = [];
+            toggleSettingsModal(false);
+            updateStatus('Déconnecté', 'rose');
+            renderTimetable();
+            showErrorState('Identifiants supprimés de cet appareil. Renseignez-les à nouveau dans les paramètres pour réafficher vos cours.');
         }
 
         function toggleEventModal(show, evt = null) {
