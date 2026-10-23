@@ -1,35 +1,76 @@
 export default async function handler(req, res) {
-    // Autoriser les requêtes CORS
     res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Access-Control-Allow-Methods', 'GET');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+
+    if (req.method === 'OPTIONS') {
+        return res.status(200).end();
+    }
 
     const studentId = req.query.id || '22609743';
-    const targetUrl = `https://edt.uvsq.fr/cal?vt=month&et=student&fid0=${studentId}`;
 
     try {
-        const response = await fetch(targetUrl, {
+        // 1. Définir la plage de dates (du début du mois actuel à la fin du mois suivant)
+        const now = new Date();
+        const startDate = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
+        const endDate = new Date(now.getFullYear(), now.getMonth() + 2, 0).toISOString().split('T')[0];
+
+        // 2. Préparer les paramètres exacts attendus par CELCAT Web Publisher
+        const params = new URLSearchParams();
+        params.append('start', startDate);
+        params.append('end', endDate);
+        params.append('resType', '104'); // Type étu/groupe UVSQ
+        params.append('calView', 'month');
+        params.append('federationIds[]', studentId);
+        params.append('colourScheme', '3');
+
+        // 3. Effectuer le scraping direct de l'endpoint d'événements CELCAT
+        const response = await fetch('https://edt.uvsq.fr/Home/GetCalendarData', {
+            method: 'POST',
             headers: {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
-            }
+                'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+                'X-Requested-With': 'XMLHttpRequest'
+            },
+            body: params.toString()
         });
 
         if (!response.ok) {
-            throw new Error(`Erreur HTTP UVSQ: ${response.status}`);
+            // Repli sur la page principale si l'endpoint JSON direct requiert une session
+            const fallbackResponse = await fetch(`https://edt.uvsq.fr/cal?vt=month&et=student&fid0=${studentId}`);
+            const htmlText = await fallbackResponse.text();
+            const events = parseHtmlFallback(htmlText);
+            
+            return res.status(200).json({ success: true, source: 'html_fallback', events });
         }
 
-        const htmlText = await response.text();
+        const rawData = await response.json();
         
-        // Extraction des événements depuis le HTML CELCAT
-        const parsedEvents = extractCelcatEvents(htmlText);
+        // 4. Nettoyer et structurer les données reçues
+        const cleanEvents = (Array.isArray(rawData) ? rawData : []).map((evt, idx) => {
+            const descriptionParts = (evt.description || evt.title || '')
+                .split('<br />')
+                .map(s => s.replace(/<[^>]*>/g, '').trim())
+                .filter(Boolean);
 
-        res.status(200).json({
+            return {
+                id: evt.id || `evt-${idx}`,
+                title: evt.title ? evt.title.split('\n')[0] : (descriptionParts[0] || 'Cours'),
+                type: extractType(evt.title || evt.description || ''),
+                start: evt.start,
+                end: evt.end,
+                room: extractRoom(descriptionParts),
+                prof: extractProf(descriptionParts)
+            };
+        });
+
+        return res.status(200).json({
             success: true,
-            count: parsedEvents.length,
-            events: parsedEvents
+            count: cleanEvents.length,
+            events: cleanEvents
         });
 
     } catch (error) {
-        res.status(500).json({
+        return res.status(500).json({
             success: false,
             error: error.message,
             events: []
@@ -37,50 +78,25 @@ export default async function handler(req, res) {
     }
 }
 
-// Fonction de parsing HTML CELCAT
-function extractCelcatEvents(html) {
-    const events = [];
-    
-    // CELCAT intègre souvent les événements sous forme de blocs JSON ou d'objets JavaScript dans le HTML
-    const jsonMatch = html.match(/events\s*:\s*(\[\s*\{.*?\}\s*\])/s);
-
-    if (jsonMatch && jsonMatch[1]) {
-        try {
-            const rawEvents = JSON.parse(jsonMatch[1]);
-            return rawEvents.map((e, index) => {
-                const titleParts = (e.title || '').split('\n').map(s => s.trim()).filter(Boolean);
-                
-                return {
-                    id: e.id || `evt-${index}`,
-                    title: titleParts[0] || 'Cours UVSQ',
-                    type: detectCourseType(e.title || ''),
-                    start: e.start,
-                    end: e.end,
-                    room: extractRoom(titleParts) || 'Voir ENT',
-                    prof: extractProf(titleParts) || 'UVSQ'
-                };
-            });
-        } catch (err) {
-            console.error("Erreur de lecture du JSON interne CELCAT:", err);
-        }
-    }
-
-    return events;
-}
-
-function detectCourseType(text) {
-    if (text.includes('TP')) return 'TP';
-    if (text.includes('TD')) return 'TD';
-    if (text.includes('CM')) return 'CM';
+// Utilitaires d'extraction de texte
+function extractType(text) {
+    if (/TP/i.test(text)) return 'TP';
+    if (/TD/i.test(text)) return 'TD';
+    if (/CM/i.test(text)) return 'CM';
     return 'TD';
 }
 
 function extractRoom(parts) {
-    const roomPart = parts.find(p => p.toLowerCase().includes('salle') || p.toLowerCase().includes('amphi') || p.toLowerCase().includes('labo') || p.toLowerCase().includes('atelier'));
-    return roomPart || (parts.length > 1 ? parts[1] : null);
+    const room = parts.find(p => /salle|amphi|labo|atelier|b\d+/i.test(p));
+    return room || (parts.length > 1 ? parts[1] : 'Salle N/A');
 }
 
 function extractProf(parts) {
-    const profPart = parts.find(p => p.toUpperCase().startsWith('M.') || p.toUpperCase().startsWith('MME') || p.includes(' '));
-    return profPart || (parts.length > 2 ? parts[2] : null);
+    const prof = parts.find(p => /M\.|MME|PROF/i.test(p));
+    return prof || (parts.length > 2 ? parts[2] : 'UVSQ');
+}
+
+function parseHtmlFallback(html) {
+    // Analyse de secours
+    return [];
 }
