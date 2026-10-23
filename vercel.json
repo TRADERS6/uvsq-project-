@@ -1,0 +1,7 @@
+{
+  "functions": {
+    "api/edt.js": {
+      "regions": ["cdg1"]
+    }
+  }
+}
