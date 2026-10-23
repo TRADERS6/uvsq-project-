@@ -188,10 +188,11 @@ async function classifyLoginFailure(post) {
 // ---- Étape 3 : GET /cal authentifié, fallback POST /Home/GetCalendarData ----
 async function fetchEvents(jar, studentId, cidParam) {
     const now = new Date();
-    const startY = now.getFullYear();
-    const startM = now.getMonth();
-    const startDate = fmtDate(startY, startM);
-    const endDate = fmtDate(startY, startM + 3);
+    // Fenêtre = année universitaire complète (septembre -> août suivants),
+    // pour couvrir tous les mois affichables dans la PWA (passé comme futur de l'année en cours)
+    const acYear = now.getMonth() >= 8 ? now.getFullYear() : now.getFullYear() - 1; // 8 = septembre
+    const startDate = fmtDate(acYear, 8);      // 1er septembre de l'année universitaire
+    const endDate = fmtDate(acYear + 1, 7);    // 1er août de l'année suivante
 
     const calUrl = `${BASE}/cal?vt=month&dt=${startDate}&et=student&cid=${encodeURIComponent(cidParam)}&fid0=${studentId}`;
 
