@@ -118,7 +118,7 @@
                         <span class="text-[10px] font-bold uppercase tracking-wider text-brand-400 bg-brand-500/10 border border-brand-500/20 px-2 py-0.5 rounded-full">Prochain cours</span>
                         <span id="next-class-countdown" class="text-xs font-mono font-bold text-amber-400">En cours...</span>
                     </div>
-                    <h2 id="next-class-title" class="text-base sm:text-lg font-bold text-white truncate">Chargement des cours...</h2>
+                    <h2 id="next-class-title" class="text-base sm:text-lg font-bold text-white line-clamp-2">Chargement des cours...</h2>
                     <p id="next-class-meta" class="text-xs text-slate-400 flex flex-wrap items-center gap-3">
                         <span><i class="fa-solid fa-location-dot text-rose-400 mr-1"></i> <span id="next-class-room">--</span></span>
                         <span><i class="fa-regular fa-clock text-brand-400 mr-1"></i> <span id="next-class-time">--:--</span></span>
@@ -147,6 +147,17 @@
                 <div id="days-carousel" class="flex items-center gap-1.5 overflow-x-auto custom-scrollbar py-0.5 px-1 scroll-smooth">
                     <!-- Dynamic Days JavaScript Injection -->
                 </div>
+                <button onclick="changeDateOffset(1)" class="p-2 rounded-xl hover:bg-slate-800 text-slate-400 hover:text-white transition active:scale-90">
+                    <i class="fa-solid fa-chevron-right"></i>
+                </button>
+            </div>
+
+            <!-- Navigation mensuelle (vue Mois uniquement) -->
+            <div id="month-nav" class="hidden items-center justify-between bg-slate-900/60 p-1.5 rounded-2xl border border-slate-800">
+                <button onclick="changeDateOffset(-1)" class="p-2 rounded-xl hover:bg-slate-800 text-slate-400 hover:text-white transition active:scale-90">
+                    <i class="fa-solid fa-chevron-left"></i>
+                </button>
+                <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Mois précédent / suivant</span>
                 <button onclick="changeDateOffset(1)" class="p-2 rounded-xl hover:bg-slate-800 text-slate-400 hover:text-white transition active:scale-90">
                     <i class="fa-solid fa-chevron-right"></i>
                 </button>
@@ -390,6 +401,8 @@
             activeBtn.classList.add('bg-brand-600', 'text-white', 'shadow-md', 'font-bold');
 
             document.getElementById('day-selector-container').classList.toggle('hidden', mode === 'MONTH');
+            document.getElementById('month-nav').classList.toggle('hidden', mode !== 'MONTH');
+            document.getElementById('month-nav').classList.toggle('flex', mode === 'MONTH');
             renderTimetable();
         }
 
@@ -426,6 +439,11 @@
 
         function changeDateOffset(offset) {
             if (activeViewMode === 'WEEK') selectedDate.setDate(selectedDate.getDate() + (offset * 7));
+            else if (activeViewMode === 'MONTH') {
+                // Navigation sur le 1er du mois : évite le débordement (31 janv + 1 mois qui sauterait février)
+                const nm = new Date(selectedDate.getFullYear(), selectedDate.getMonth() + offset, 1);
+                selectedDate.setFullYear(nm.getFullYear(), nm.getMonth(), nm.getDate());
+            }
             else selectedDate.setDate(selectedDate.getDate() + offset);
             initDaysCarousel();
             renderTimetable();
@@ -607,17 +625,21 @@
 
             for (let day = 1; day <= daysInMonth; day++) {
                 const thisDate = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), day);
-                const hasEvents = events.some(e => isSameDay(new Date(e.start), thisDate));
+                const isSame = (e, d) => isSameDay(new Date(e.start), d);
+                const dayCount = events.filter(e => isSame(e, thisDate)).length;
+                const isToday = isSameDay(thisDate, new Date());
                 const isSelected = isSameDay(thisDate, selectedDate);
 
                 const cell = document.createElement('button');
                 cell.onclick = () => { selectDate(thisDate); setViewMode('DAY'); };
-                cell.className = `py-2 rounded-xl flex flex-col items-center justify-center relative ${
-                    isSelected ? 'bg-brand-600 text-white font-bold' : 'hover:bg-slate-800 text-slate-300'
+                cell.className = `min-h-[44px] py-1.5 rounded-xl flex flex-col items-center justify-center relative ${
+                    isSelected ? 'bg-brand-600 text-white font-bold' :
+                    isToday ? 'bg-slate-800 text-brand-400 font-semibold' :
+                    'hover:bg-slate-800 text-slate-300'
                 }`;
                 cell.innerHTML = `
                     <span>${day}</span>
-                    ${hasEvents ? `<span class="w-1 h-1 rounded-full bg-amber-400 mt-0.5"></span>` : ''}
+                    ${dayCount > 0 ? `<span class="text-[8px] font-bold leading-none mt-0.5 px-1 rounded-full ${isSelected ? 'bg-white/25 text-white' : 'bg-amber-400/15 text-amber-400'}">${dayCount}</span>` : ''}
                 `;
                 grid.appendChild(cell);
             }
@@ -643,7 +665,7 @@
                             <span class="inline-block px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider bg-slate-800 text-slate-300 border border-slate-700">${evt.type}</span>
                             ${isLive ? '<span class="px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider bg-rose-500/10 text-rose-400 border border-rose-500/20 animate-pulse">En cours</span>' : ''}
                         </div>
-                        <h3 class="text-xs sm:text-sm font-bold text-white leading-snug mt-1.5">${evt.title}</h3>
+                        <h3 class="text-xs sm:text-sm font-bold text-white leading-snug mt-1.5 line-clamp-2">${evt.title}</h3>
                     </div>
                     <div class="text-right flex-shrink-0">
                         <div class="text-xs font-mono font-bold text-slate-200">${formatTime(start)}</div>
