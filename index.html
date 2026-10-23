@@ -91,6 +91,7 @@
                         <span class="w-2 h-2 rounded-full bg-emerald-500 inline-block animate-pulse"></span>
                         <span id="status-text">Synchronisé (Cache Local)</span>
                     </p>
+                    <p id="last-sync" class="text-[10px] text-slate-500"></p>
                 </div>
             </div>
 
@@ -492,10 +493,12 @@
             const cacheKey = `uvsq_edt_api_${appConfig.federationId}_${appConfig.cid}`;
             let cache = null;
             try { cache = JSON.parse(localStorage.getItem(cacheKey) || 'null'); } catch (e) { cache = null; }
-            const cacheFresh = cache && Array.isArray(cache.events) && (Date.now() - cache.fetchedAt) < 6 * 60 * 60 * 1000;
+            // Fraîcheur du cache : 1 h — au-delà, resynchronisation automatique à l'ouverture
+            const cacheFresh = cache && Array.isArray(cache.events) && (Date.now() - cache.fetchedAt) < 60 * 60 * 1000;
 
             if (!forceRefresh && cacheFresh) {
                 timetableData = cache.events;
+                setLastSync(cache.fetchedAt);
                 updateStatus('Cache Local (UVSQ)', 'emerald');
                 renderTimetable();
                 updateNextClassCountdown();
@@ -515,7 +518,9 @@
 
                 if (response.ok && data.success && Array.isArray(data.events) && data.events.length > 0) {
                     timetableData = data.events;
-                    localStorage.setItem(cacheKey, JSON.stringify({ events: timetableData, fetchedAt: Date.now() }));
+                    const now = Date.now();
+                    localStorage.setItem(cacheKey, JSON.stringify({ events: timetableData, fetchedAt: now }));
+                    setLastSync(now);
                     updateStatus('En Direct UVSQ (LDAP)', 'emerald');
                 } else {
                     timetableData = [];
@@ -528,6 +533,7 @@
                 console.error('Erreur synchro UVSQ :', error);
                 if (cache && Array.isArray(cache.events) && cache.events.length > 0) {
                     timetableData = cache.events;
+                    setLastSync(cache.fetchedAt);
                     updateStatus('Hors-ligne (cache UVSQ)', 'amber');
                 } else {
                     timetableData = [];
@@ -720,6 +726,14 @@
             return d1.getFullYear() === d2.getFullYear() &&
                    d1.getMonth() === d2.getMonth() &&
                    d1.getDate() === d2.getDate();
+        }
+
+        // INDICATEUR « dernière synchro » : fraîcheur visible des données affichées
+        function setLastSync(ts) {
+            const el = document.getElementById('last-sync');
+            el.textContent = ts
+                ? `Données CELCAT lues à ${new Date(ts).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}`
+                : '';
         }
 
         function updateStatus(text, color) {
