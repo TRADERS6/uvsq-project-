@@ -9,11 +9,11 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="UVSQ EDT">
-    <link rel="apple-touch-icon" href="https://placehold.co/180x180/2563eb/ffffff?text=EDT">
+    <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
     <meta name="theme-color" content="#030712">
 
     <!-- Web App Manifest (PWA Android) -->
-    <link rel="manifest" href="data:application/json;base64,eyJuYW1lIjoiVVZTUSBFRFQiLCJzaG9ydF9uYW1lIjoiVVZTUSBFRFQiLCJzdGFydF91cmwiOiIuIiwiZGlzcGxheSI6InN0YW5kYWxvbmUiLCJiYWNrZ3JvdW5kX2NvbG9yIjoiIzAzMDcxMiIsInRoZW1lX2NvbG9yIjoiIzAzMDcxMiJ9">
+    <link rel="manifest" href="/manifest.json">
 
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -810,6 +810,15 @@
                 // et le badge de cours finissant se met à jour sans toucher l'app
                 if (activeViewMode !== 'MONTH') renderTimetable();
             }, 30000);
+        }
+
+        // SERVICE WORKER : installation réelle de la PWA + consultation hors-ligne
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/sw.js').catch(e => {
+                    console.warn('Service Worker non enregistré :', e);
+                });
+            });
         }
     </script>
 </body>
