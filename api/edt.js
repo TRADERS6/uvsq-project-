@@ -35,15 +35,38 @@ export default async function handler(req, res) {
             return res.status(200).json({
                 success: false,
                 error: 'no_events',
-                message: "CELCAT n'a retourné aucun cours : l'ID étudiant (fid0) ou le CID du groupe dans les paramètres de la PWA est probablement incorrect.",
+                message: "CELCAT n'a retourné aucun cours : le compte ENT ou l'ID étudiant dans les paramètres de la PWA est probablement incorrect.",
                 events: []
+            });
+        }
+
+        // Mode widget (Scriptable iOS) : réponse compacte — le prochain cours +
+        // la journée, sans les détails bruts ni la liste complète de l'année.
+        if (req.query.widget) {
+            // start/end sont des instants UTC (voir toParisInstant dans lib/celcat.js) :
+            // les comparaisons server-side sont donc justes indépendamment du TZ du serveur.
+            const now = Date.now();
+            const upcoming = events
+                .map(e => ({ start: e.start, end: e.end, title: e.title, type: e.type, room: e.room, prof: e.prof }))
+                .filter(e => new Date(e.end).getTime() > now)
+                .sort((a, b) => new Date(a.start).getTime() - new Date(b.start).getTime());
+            const todayKey = new Date().toISOString().slice(0, 10);
+            const isToday = e => new Date(e.start).toISOString().slice(0, 10) === todayKey;
+
+            return res.status(200).json({
+                success: true,
+                source: 'celcat_uvsq',
+                widget: true,
+                now: new Date().toISOString(),
+                next: upcoming[0] || null,
+                today: upcoming.filter(isToday)
             });
         }
 
         return res.status(200).json({
             success: true,
             source: 'celcat_uvsq',
-            student: 'Tounga Nana, Adriel Kynan',
+            student: studentId,
             group: 'GMP1S1TP4',
             count: events.length,
             fetchedAt: new Date().toISOString(),
