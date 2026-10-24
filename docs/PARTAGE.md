@@ -8,7 +8,7 @@ ton propre nom de domaine à la place du domaine Vercel.
 Ton app est déjà utilisable par tout le monde :
 
 ```
-https://ton-projet.vercel.app
+https://uvsq-project.vercel.app
 ```
 
 - Au premier lancement, chaque étudiant voit l'écran de bienvenue :
@@ -25,13 +25,13 @@ https://ton-projet.vercel.app
 
 ```
 📅 Le génie du groupe ? L'EDT du groupe directement sur votre téléphone 👇
-https://ton-projet.vercel.app
+https://uvsq-project.vercel.app
 
 Ouvrez le lien ➜ entrez votre numéro étudiant (+ vos identifiants ENT si
 demandé). Vos infos restent sur VOTRE téléphone, rien n'est conservé sur
 un serveur. Installable comme une vraie app (Sur l'écran d'accueil), et
 ça marche même sans réseau (dernier EDT gardé en cache).
-Widget iPhone dispo aussi : https://ton-projet.vercel.app  ➜ voir "Widget" dans les réglages
+Widget iPhone dispo aussi : https://uvsq-project.vercel.app  ➜ voir "Widget" dans les réglages
 ```
 
 ## 3. Le QR code (affiche / tableau / fin d'amphi)
@@ -45,7 +45,7 @@ Conseil : garde le QR **pointant toujours la même URL** (le domaine final).
 Si tu changes de domaine plus tard, l'affiche périmée est la principale
 source de confusion.
 
-## 4. Ton propre domaine (remplace ton-projet.vercel.app)
+## 4. Ton propre domaine (remplace uvsq-project.vercel.app)
 
 Le nom de domaine s'achète (les hébergement reste gratuit chez Vercel) :
 
