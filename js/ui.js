@@ -316,5 +316,7 @@ function startCountdownTimer() {
         // Re-rendu local (aucun réseau) : les cartes passent en « En cours »
         // et le badge de cours finissant se met à jour sans toucher l'app
         if (activeViewMode !== 'MONTH') renderTimetable();
+        // Alerter (si activé) 10 min avant chaque cours — boucle existante réutilisée
+        checkUpcomingNotifications();
     }, 30000);
 }

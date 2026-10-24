@@ -309,6 +309,14 @@
                     <p class="text-[11px] text-slate-500 mt-1">Stocké sur votre téléphone, transmis chiffré à /api/edt. Alternative serveur : CELCAT_USERNAME / CELCAT_PASSWORD dans Vercel.</p>
                 </div>
 
+                <div class="flex items-center justify-between gap-3 bg-slate-950/60 border border-slate-800 rounded-xl px-3.5 py-2.5">
+                    <div>
+                        <p class="text-xs font-semibold text-slate-300">Notification cours imminent</p>
+                        <p class="text-[11px] text-slate-500">Alerte 10 minutes avant le début d'un cours (fonctionne quand la PWA est ouverte ou en arrière-plan).</p>
+                    </div>
+                    <input type="checkbox" id="cfg-notify" class="w-5 h-5 flex-shrink-0 accent-brand-600 cursor-pointer">
+                </div>
+
                 <div class="bg-slate-950/60 border border-slate-800 rounded-xl p-3">
                     <p class="text-[11px] text-slate-500 leading-relaxed"><i class="fa-solid fa-lock text-emerald-500 mr-1"></i><strong class="text-slate-400">Confidentialité</strong> — vos identifiants restent stockés uniquement sur cet appareil (localStorage), jamais sur nos serveurs. Ils sont transmis chiffrés (HTTPS) à l'API à chaque synchronisation, utilisés à la volée pour le login LDAP UVSQ, et le serveur ne conserve rien (session en mémoire ~25 min, aucun stockage, aucune base de données, aucun log d'identifiant) ; ils ne circulent que vers edt.uvsq.fr. L'app charge du style à partir de CDN publics (Tailwind, FontAwesome) mais aucune donnée personnelle n'y transite. En clair sur votre appareil : comme toute PWA sans chiffrement local, votre mot de passe est lisible par qui accède physiquement au téléphone déverrouillé — ne cochez pas « se souvenir » du navigateur sur un appareil partagé.</p>
                 </div>

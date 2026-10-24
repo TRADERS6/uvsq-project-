@@ -16,6 +16,9 @@ let activeViewMode = 'DAY';
 let activeFilter = 'ALL';
 let timetableData = [];
 
+// NOTIFICATIONS : réglage persistant + anti-doublon par évènement
+const NOTIFY_LEAD_MIN = 10;
+
 // CHARGEMENT / SAUVEGARDE CONFIG
 function loadSettings() {
     // Purge des anciens caches contenant les données de démo (DUPONT / MARTIN)
@@ -34,6 +37,7 @@ function loadSettings() {
     document.getElementById('cfg-cid').value = appConfig.cid;
     document.getElementById('cfg-api-user').value = appConfig.apiUser;
     document.getElementById('cfg-api-pass').value = appConfig.apiPass;
+    document.getElementById('cfg-notify').checked = !!appConfig.notify;
 }
 
 // ONBOARDING : premier lancement — tout étudiant de l'IUT entre juste son
@@ -84,6 +88,16 @@ function saveSettings(e) {
     appConfig.apiUser = document.getElementById('cfg-api-user').value.trim();
     appConfig.apiPass = document.getElementById('cfg-api-pass').value;
     appConfig.sourceMode = 'API';
+
+    // Notifications : la permission doit être demandée dans un geste utilisateur (ce clic)
+    const notifyWanted = document.getElementById('cfg-notify').checked;
+    appConfig.notify = notifyWanted;
+    if (notifyWanted && typeof Notification !== 'undefined' && Notification.permission === 'default') {
+        Notification.requestPermission().catch(() => {});
+    } else if (notifyWanted && typeof Notification !== 'undefined' && Notification.permission === 'denied') {
+        alert("Les notifications sont bloquées pour ce site dans le réglage du navigateur/Safari : autorisez-les pour recevoir les alertes de cours.");
+    }
+
     localStorage.setItem('uvsq_edt_config', JSON.stringify(appConfig));
     toggleSettingsModal(false);
     fetchTimetableData(true);
