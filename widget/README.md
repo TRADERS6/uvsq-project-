@@ -37,3 +37,8 @@ renvoie la version compacte :
 ```
 
 Ce endpoint ne contient **pas** les `rawDetails` ni la liste entière de l'année (réponse plus courte, plus rapide à charger par le widget).
+
+## Durcissement de l'API (opt-in)
+
+- `ALLOWED_ORIGIN` (Vercel) : si définie (ex. `https://mon-edt.vercel.app`), le CORS n'autorise plus que ce domaine. **Ne casse pas le widget** : Scriptable n'est pas un navigateur, le CORS ne s'applique pas à lui ; ni la PWA, dont les requêtes sont same-origin.
+- `RATE_LIMIT_BURST` / `RATE_LIMIT_PER_SEC` (défaut 60 / 2 s par IP) : trop de requêtes → HTTP 429 avec `Retry-After`, message affiché proprement dans la PWA. Se sert à bloquer les flooders de login, pas un usage normal (le widget ne rafraîchit que toutes les 10 min).

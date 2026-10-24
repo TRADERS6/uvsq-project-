@@ -1,13 +1,52 @@
 // Handler Vercel /api/edt : validation des entrées, réponse HTTP.
 // Toute la logique CELCAT (login LDAP, scraping, parsing) vit dans lib/celcat.js.
+//
+// Durcissement (opt-in via variables d'environnement Vercel) :
+//   ALLOWED_ORIGIN    = https://mon-edt.vercel.app  → CORS restreint à la PWA ;
+//                       à défaut, '*' (comportement historique, sans secret exposé).
+//   RATE_LIMIT_BURST  = capacité de rafale par IP (défaut 60)
+//   RATE_LIMIT_PER_SEC= recharge par seconde par IP (défaut 2)
+// Le limiter est en mémoire par instance (lib/rate-limit.js) : suffisant contre
+// les floods ; pour un comptage global exact, prévoir Redis (p. ex. Upstash).
+// Le widget Scriptable n'est pas un navigateur : le CORS ne le bloque pas.
 import { getAuthenticatedEvents } from '../lib/celcat.js';
+import { rateLimit } from '../lib/rate-limit.js';
 
-export default async function handler(req, res) {
-    res.setHeader('Access-Control-Allow-Origin', '*');
+// Lu à chaque requête (et non à l'import) : le comportement suit les
+// variables d'environnement courantes, testable et resistant aux soft-launch.
+const allowedOrigin = () => process.env.ALLOWED_ORIGIN || '';
+
+function setCors(res) {
+    const origin = allowedOrigin();
+    res.setHeader('Access-Control-Allow-Origin', origin || '*');
     res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type, x-celcat-user, x-celcat-pass');
+    if (origin) res.setHeader('Vary', 'Origin');
+}
+
+function clientIp(headers) {
+    return String(headers['x-real-ip'] || String(headers['x-forwarded-for'] || '').split(',')[0].trim() || 'unknown');
+}
+
+export default async function handler(req, res) {
+    setCors(res);
 
     if (req.method === 'OPTIONS') return res.status(200).end();
+
+    // Rate-limit par IP (bucket de jetons), avant tout le reste : cheap
+    const limiter = rateLimit(`edt:${clientIp(req.headers)}`, {
+        burst: Number(process.env.RATE_LIMIT_BURST || 60),
+        refillPerSec: Number(process.env.RATE_LIMIT_PER_SEC || 2)
+    });
+    if (!limiter.allowed) {
+        res.setHeader('Retry-After', String(limiter.retryAfterSec));
+        return res.status(429).json({
+            success: false,
+            error: 'rate_limited',
+            message: `Trop de requêtes depuis cet appareil : nouvelle tentative dans ${limiter.retryAfterSec} s.`,
+            events: []
+        });
+    }
 
     // Identifiants : env Vercel en priorité, sinon headers transmis par la PWA
     const user = process.env.CELCAT_USERNAME || req.headers['x-celcat-user'] || '';
