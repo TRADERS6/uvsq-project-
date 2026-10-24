@@ -207,16 +207,19 @@ function createEventCard(evt) {
     let borderHighlight = evt.type === 'TD' ? 'border-l-emerald-500' : evt.type === 'TP' ? 'border-l-amber-500' : 'border-l-blue-500';
     if (isLive) borderHighlight = 'border-l-rose-500 ring-1 ring-rose-500/50 shadow-rose-500/10';
 
+    // Textes CELCAT échappés : innerHTML + identifiants en localStorage => XSS inadmissible
+    const esc = escapeHtml;
+
     card.onclick = () => toggleEventModal(true, evt);
     card.className = `bg-slate-900 border border-slate-800 rounded-2xl p-3.5 shadow-md flex flex-col gap-2 border-l-4 ${borderHighlight} transition active:scale-[0.98] cursor-pointer hover:border-slate-700`;
     card.innerHTML = `
         <div class="flex items-start justify-between gap-2">
             <div>
                 <div class="flex items-center gap-1.5">
-                    <span class="inline-block px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider bg-slate-800 text-slate-300 border border-slate-700">${evt.type}</span>
+                    <span class="inline-block px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider bg-slate-800 text-slate-300 border border-slate-700">${esc(evt.type)}</span>
                     ${isLive ? '<span class="px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider bg-rose-500/10 text-rose-400 border border-rose-500/20 animate-pulse">En cours</span>' : ''}
                 </div>
-                <h3 class="text-xs sm:text-sm font-bold text-white leading-snug mt-1.5 line-clamp-2">${evt.title}</h3>
+                <h3 class="text-xs sm:text-sm font-bold text-white leading-snug mt-1.5 line-clamp-2">${esc(evt.title)}</h3>
             </div>
             <div class="text-right flex-shrink-0">
                 <div class="text-xs font-mono font-bold text-slate-200">${formatTime(start)}</div>
@@ -224,8 +227,8 @@ function createEventCard(evt) {
             </div>
         </div>
         <div class="flex items-center justify-between text-[11px] text-slate-400 pt-1.5 border-t border-slate-800/60">
-            <span class="font-semibold text-slate-200"><i class="fa-solid fa-location-dot text-rose-400 mr-1"></i>${evt.room}</span>
-            <span class="text-slate-400"><i class="fa-solid fa-user-tie text-indigo-400 mr-1"></i>${evt.prof}</span>
+            <span class="font-semibold text-slate-200"><i class="fa-solid fa-location-dot text-rose-400 mr-1"></i>${esc(evt.room)}</span>
+            <span class="text-slate-400"><i class="fa-solid fa-user-tie text-indigo-400 mr-1"></i>${esc(evt.prof)}</span>
         </div>
     `;
     return card;
