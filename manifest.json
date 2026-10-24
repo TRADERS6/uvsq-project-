@@ -1,7 +1,7 @@
 {
     "name": "UVSQ EDT",
     "short_name": "UVSQ EDT",
-    "description": "Emploi du temps UVSQ (CELCAT) en PWA : jours, semaines, mois, prochain cours en direct.",
+    "description": "Ton emploi du temps UVSQ (CELCAT) en PWA : entre ton numéro étudiant et c'est parti — jours, semaines, mois, prochain cours en direct.",
     "lang": "fr",
     "id": "/",
     "start_url": "/",

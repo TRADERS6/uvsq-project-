@@ -200,6 +200,41 @@
         </div>
     </main>
 
+    <!-- ONBOARDING : premier lancement — tout étudiant de l'IUT peut démarrer ici -->
+    <div id="onboarding-modal" class="fixed inset-0 z-[60] bg-slate-950 flex items-center justify-center p-4 hidden">
+        <div class="bg-slate-900 border border-slate-800 rounded-3xl max-w-md w-full p-6 shadow-2xl relative overflow-hidden">
+            <div class="flex items-center gap-3 mb-4">
+                <div class="w-12 h-12 rounded-2xl bg-gradient-to-br from-brand-500 to-indigo-600 flex items-center justify-center text-white text-xl shadow-lg shadow-brand-500/20 flex-shrink-0">
+                    <i class="fa-solid fa-calendar-days"></i>
+                </div>
+                <div>
+                    <h2 class="text-lg font-bold text-white">Bienvenue sur UVSQ EDT</h2>
+                    <p class="text-[11px] text-slate-400">Ton emploi du temps CELCAT, directement sur ton téléphone</p>
+                </div>
+            </div>
+
+            <form id="onboarding-form" onsubmit="saveOnboarding(event)" class="space-y-4">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-300 mb-1.5">Ton numéro étudiant UVSQ</label>
+                    <input type="text" id="onboarding-federation-id" required inputmode="numeric" pattern="[0-9]{4,12}" placeholder="ex : 22609743" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-3 text-lg text-white text-center focus:outline-none focus:border-brand-500 transition font-mono tracking-wide">
+                    <p class="text-[11px] text-slate-500 mt-1.5">C'est ton numéro d'étudiant (fid0), visible dans l'URL d'edt.uvsq.fr. Ton calendrier suit automatiquement ton numéro, quel que soit ton groupe.</p>
+                </div>
+
+                <details id="onboarding-ent-details" class="bg-slate-950/60 border border-slate-800 rounded-xl px-3.5 py-2.5">
+                    <summary class="text-[11px] font-semibold text-slate-400 cursor-pointer select-none">Ajouter mes identifiants ENT (optionnel)</summary>
+                    <div class="mt-2.5 space-y-2.5">
+                        <input type="text" id="onboarding-api-user" placeholder="Identifiant ENT (souvent ton n° étudiant)" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-brand-500 transition font-mono">
+                        <input type="password" id="onboarding-api-pass" autocomplete="off" placeholder="Mot de passe ENT" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-brand-500 transition font-mono">
+                    </div>
+                </details>
+
+                <p class="text-[10px] text-slate-500 leading-relaxed"><i class="fa-solid fa-lock text-emerald-500 mr-1"></i>Tout reste sur ton appareil : rien n'est envoyé à personne d'autre que l'UVSQ. Tu peux ajuster ces informations plus tard dans les paramètres (bouton engrenage).</p>
+
+                <button type="submit" class="w-full py-3 bg-brand-600 hover:bg-brand-500 text-white font-bold rounded-xl text-sm transition shadow-lg shadow-brand-500/20 active:scale-[0.98]">Voir mon emploi du temps</button>
+            </form>
+        </div>
+    </div>
+
     <!-- EVENT DETAILS MODAL -->
     <div id="event-modal" class="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4 hidden">
         <div class="bg-slate-900 border border-slate-800 rounded-3xl max-w-md w-full p-6 shadow-2xl relative overflow-hidden space-y-4">

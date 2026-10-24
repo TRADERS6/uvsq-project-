@@ -14,9 +14,12 @@ export default async function handler(req, res) {
     const pass = process.env.CELCAT_PASSWORD || req.headers['x-celcat-pass'] || '';
 
     if (!user || !pass) {
+        // Info utile à l'onboarding de la PWA : le serveur dispose-t-il déjà
+        // d'identifiants propre ? Sinon, chaque étudiant doit mettre les siens.
         return res.status(401).json({
             success: false,
             error: 'missing_credentials',
+            server_credentials_configured: !!process.env.CELCAT_USERNAME && !!process.env.CELCAT_PASSWORD,
             message: "Identifiants UVSQ absents : définissez CELCAT_USERNAME / CELCAT_PASSWORD dans Vercel, ou renseignez-les dans les paramètres de la PWA.",
             events: []
         });

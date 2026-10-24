@@ -36,6 +36,45 @@ function loadSettings() {
     document.getElementById('cfg-api-pass').value = appConfig.apiPass;
 }
 
+// ONBOARDING : premier lancement — tout étudiant de l'IUT entre juste son
+// numéro étudiant ; le CID par défaut suit son calendrier, quel que soit son groupe.
+function isConfigured() {
+    return !!localStorage.getItem('uvsq_edt_config');
+}
+
+function showOnboarding() {
+    document.getElementById('onboarding-modal').classList.remove('hidden');
+
+    // Auto-détection : si le serveur n'a pas ses propres identifiants CELCAT,
+    // l'étudiant DOIT mettre les siens — on ouvre et rends requis le bloc ENT.
+    // Avec des identifiants serveur, le n° étudiant seul suffit.
+    fetch('/api/edt').then(res => res.json().then(data => ({ status: res.status, data }), () => ({ status: res.status, data: {} })))
+        .then(({ status, data }) => {
+            if (status === 401 && data.server_credentials_configured === false) {
+                const details = document.getElementById('onboarding-ent-details');
+                details.open = true;
+                details.querySelector('summary').textContent = 'Mes identifiants ENT (nécessaires)';
+                document.getElementById('onboarding-api-user').required = true;
+                document.getElementById('onboarding-api-pass').required = true;
+            }
+        })
+        .catch(() => { /* hors-ligne : la soumission gèrera l'erreur API le moment venu */ });
+}
+
+function saveOnboarding(e) {
+    e.preventDefault();
+    const id = document.getElementById('onboarding-federation-id').value.trim();
+    if (!/^[0-9]{4,12}$/.test(id)) return;
+    appConfig.federationId = id;
+    // ENT optionnel requis selon l'auto-détection du serveur (showOnboarding) :
+    // avec CELCAT_USERNAME/PASSWORD côté Vercel, le n° étudiant seul suffit.
+    appConfig.apiUser = document.getElementById('onboarding-api-user').value.trim();
+    appConfig.apiPass = document.getElementById('onboarding-api-pass').value;
+    localStorage.setItem('uvsq_edt_config', JSON.stringify(appConfig));
+    document.getElementById('onboarding-modal').classList.add('hidden');
+    fetchTimetableData(true);
+}
+
 function saveSettings(e) {
     e.preventDefault();
     appConfig.federationId = document.getElementById('cfg-federation-id').value.trim() || '22609743';
@@ -171,7 +210,10 @@ window.addEventListener('load', () => {
     safe(initDaysCarousel);   // affichage des jours d'abord, indépendant de tout le reste
     safe(loadSettings);
     safe(checkIosPrompt);
-    safe(fetchTimetableData);
+    safe(() => {
+        if (isConfigured()) fetchTimetableData();
+        else showOnboarding();   // premier lancement : avant toute synchro, on demande le n° étudiant
+    });
     safe(startCountdownTimer);
 });
 
