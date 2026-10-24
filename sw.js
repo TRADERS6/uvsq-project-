@@ -4,7 +4,7 @@
 //   (cache localStorage des cours) et ses messages d'erreur
 // - CDN (Tailwind, FontAwesome) : stale-while-revalidate pour garder le style
 //   et les icônes disponibles hors-ligne après la première visite
-const CACHE_NAME = 'uvsq-edt-v1';
+const CACHE_NAME = 'uvsq-edt-v2';
 const RUNTIME_CACHE = 'uvsq-edt-runtime-v1';
 const RUNTIME_LIMIT = 100;
 
@@ -12,6 +12,9 @@ const PRECACHE = [
     '/',
     '/index.html',
     '/manifest.json',
+    '/js/utils.js',
+    '/js/ui.js',
+    '/js/app.js',
     '/icons/icon-192.png',
     '/icons/icon-512.png',
     '/icons/icon-maskable-512.png',
