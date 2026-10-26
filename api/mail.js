@@ -7,7 +7,7 @@
 //
 // Durcissement : même CORS optionnel (ALLOWED_ORIGIN) et même rate-limit
 // (RATE_LIMIT_BURST / RATE_LIMIT_PER_SEC) que /api/edt, compteur séparé « mail: ».
-import { listRecentMails, getMail, sendMessage } from '../lib/mail.js';
+import { listRecentMails, getMail, sendMessage, deleteMail, moveMail } from '../lib/mail.js';
 import { rateLimit } from '../lib/rate-limit.js';
 
 const allowedOrigin = () => process.env.ALLOWED_ORIGIN || '';
@@ -135,12 +135,35 @@ export default async function handler(req, res) {
             });
         }
 
-        // ---------- POST : envoi d'un e-mail via SMTP ----------
+        // ---------- POST ----------
         const body = await readJson(req);
         if (!body || typeof body !== 'object') {
             return res.status(400).json({ success: false, error: 'bad_request', message: 'Corps de requête JSON invalide.' });
         }
 
+        // ------ action sur un mail existant : supprimer / déplacer ------
+        if (body.action === 'delete' || body.action === 'move') {
+            const folder = String(body.folder || 'inbox').toLowerCase();
+            const target = String(body.target || 'trash').toLowerCase();
+            if (!FOLDER_WHITELIST.includes(folder) || (body.action === 'move' && !FOLDER_WHITELIST.includes(target))) {
+                return res.status(400).json({ success: false, error: 'bad_request', message: 'Dossier inconnu : inbox, sent, junk ou trash.' });
+            }
+            const r = body.action === 'delete'
+                ? await deleteMail(user, pass, body.uid, folder)
+                : await moveMail(user, pass, body.uid, folder, target);
+            return res.status(200).json({
+                success: true,
+                source: 'partage_imap',
+                folder,
+                login: r.login,
+                where: r.where,
+                message: body.action === 'delete'
+                    ? 'Mail déplacé dans la corbeille Partage.'
+                    : `Mail déplacé vers « ${target} ».`
+            });
+        }
+
+        // ------ envoi d'un e-mail via SMTP ------
         const result = await sendMessage(user, pass, body);
         return res.status(200).json({
             success: true,

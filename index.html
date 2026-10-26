@@ -380,14 +380,21 @@
 
     <!-- MAIL READER : lecture plein écran -->
     <div id="mail-reader" class="fixed inset-0 z-50 bg-slate-950 flex flex-col hidden">
-        <div class="bg-slate-900/90 backdrop-blur-xl border-b border-slate-800 px-4 py-3 flex items-center gap-2 flex-shrink-0" style="padding-top: calc(env(safe-area-inset-top) + 0.75rem);">
+        <div class="relative bg-slate-900/90 backdrop-blur-xl border-b border-slate-800 px-4 py-3 flex items-center gap-2 flex-shrink-0" style="padding-top: calc(env(safe-area-inset-top) + 0.75rem);">
             <button onclick="closeMailReader()" class="p-2 rounded-xl bg-slate-800/80 hover:bg-slate-700 text-slate-300 hover:text-white transition active:scale-90 border border-slate-700/50">
                 <i class="fa-solid fa-arrow-left"></i>
             </button>
             <p class="text-xs font-bold text-white truncate flex-1" id="reader-subject">--</p>
+            <button onclick="toggleMoveMenu(event)" id="reader-move-btn" class="p-2 rounded-xl bg-slate-800/80 hover:bg-slate-700 text-slate-300 hover:text-white transition active:scale-90 border border-slate-700/50 flex-shrink-0" title="Déplacer vers…">
+                <i class="fa-solid fa-folder-tree"></i>
+            </button>
+            <button onclick="deleteCurrentMail()" class="p-2 rounded-xl bg-slate-800/80 hover:bg-rose-950/80 hover:text-rose-300 text-slate-300 transition active:scale-90 border border-slate-700/50 flex-shrink-0" title="Supprimer (vers corbeille)">
+                <i class="fa-solid fa-trash-can"></i>
+            </button>
             <button onclick="replyToCurrentMail()" class="p-2 rounded-xl bg-brand-600 hover:bg-brand-500 text-white transition active:scale-90 flex-shrink-0" title="Répondre">
                 <i class="fa-solid fa-reply"></i>
             </button>
+            <div id="move-menu" class="hidden absolute right-2 top-full mt-1 z-50 w-64 bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl overflow-hidden"></div>
         </div>
         <div class="flex-1 overflow-y-auto custom-scrollbar max-w-4xl w-full mx-auto px-4 py-4">
             <div class="bg-slate-900/60 border border-slate-800/60 rounded-2xl p-4 space-y-2">

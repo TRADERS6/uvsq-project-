@@ -366,7 +366,80 @@ function renderMailReader(mail) {
 
 function closeMailReader() {
     document.getElementById('mail-reader').classList.add('hidden');
+    document.getElementById('move-menu').classList.add('hidden');
+    currentMail = null;
     renderMailList();
+}
+
+// ---------- suppression / déplacement ----------
+// Depuis le lecteur : le mail quitte le dossier affiché (corbeille Partage
+// pour la suppression, dossier choisi pour le déplacement). L'opération est
+// faite côté serveur, jamais de suppression définitive ni de vidage corbeille.
+function removeMailFromList(uid) {
+    mailData = mailData.filter(m => m.uid !== uid);
+    updateMailBadge();
+    saveMailCache();
+}
+
+function toggleMoveMenu(ev) {
+    if (ev && ev.stopPropagation) ev.stopPropagation();
+    const menu = document.getElementById('move-menu');
+    if (!menu) return;
+    if (!menu.classList.contains('hidden')) {
+        menu.classList.add('hidden');
+        return;
+    }
+    if (!currentMail) return;
+    menu.innerHTML = '';
+    for (const id of folderAvailability) {
+        if (id === currentFolder) continue; // le dossier courant n'est pas une cible
+        const btn = document.createElement('button');
+        const targetLabel = FOLDER_LABELS[id] || id;
+        btn.className = 'w-full text-left px-4 py-3 text-xs text-slate-200 hover:bg-slate-800 flex items-center gap-2.5 border-b border-slate-800/60 last:border-b-0';
+        btn.innerHTML = `<i class="fa-solid ${FOLDER_ICONS[id] || 'fa-envelope'} text-slate-500 w-4 text-center"></i><span>Déplacer vers <b class="text-white">${escapeHtml(targetLabel)}</b></span>`;
+        btn.onclick = () => {
+            menu.classList.add('hidden');
+            moveCurrentMail(id);
+        };
+        menu.appendChild(btn);
+    }
+    menu.classList.remove('hidden');
+}
+
+async function runMutation(action, target) {
+    if (!currentMail || !hasMailCreds()) return;
+    const uid = currentMail.uid;
+    if (action === 'delete' && !confirm('Supprimer ce mail ? Il ira dans la corbeille Partage (récupérable via le webmail).')) return;
+    if (action === 'delete') currentMail = null; // pas de double clic / lecture fantôme pendant l'aller-retour
+
+    try {
+        const c = getMailCreds();
+        const res = await fetch('/api/mail', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'x-mail-user': c.user, 'x-mail-pass': c.pass },
+            body: JSON.stringify(action === 'delete' ? { action, uid, folder: currentFolder } : { action, uid, folder: currentFolder, target })
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || !data.success) {
+            currentMail = null;
+            alert(data.message || `Opération échouée (HTTP ${res.status}).`);
+            return;
+        }
+        removeMailFromList(uid);
+        currentMail = null;
+        closeMailReader(); // ferme le lecteur + re-rend la liste sans le mail
+    } catch (e) {
+        currentMail = null;
+        alert("Connexion impossible. Vérifie le réseau puis réessaie.");
+    }
+}
+
+function deleteCurrentMail() {
+    return runMutation('delete', null);
+}
+
+function moveCurrentMail(targetFolder) {
+    return runMutation('move', targetFolder);
 }
 
 // ---------- rédaction ----------
