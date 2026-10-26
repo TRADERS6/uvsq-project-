@@ -91,17 +91,27 @@ function saveSettings(e) {
     appConfig.apiPass = document.getElementById('cfg-api-pass').value;
     appConfig.sourceMode = 'API';
 
-    // Notifications : la permission doit être demandée dans un geste utilisateur (ce clic)
     const notifyWanted = document.getElementById('cfg-notify').checked;
     appConfig.notify = notifyWanted;
-    if (notifyWanted && typeof Notification !== 'undefined' && Notification.permission === 'default') {
-        Notification.requestPermission().catch(() => {});
-    } else if (notifyWanted && typeof Notification !== 'undefined' && Notification.permission === 'denied') {
-        alert("Les notifications sont bloquées pour ce site dans le réglage du navigateur/Safari : autorisez-les pour recevoir les alertes de cours.");
-    }
 
+    // Enregistrement D'ABORD : sur certains navigateurs PC, l'API Notifications
+    // est en variante legacy (requestPermission ne renvoie pas de promesse) et
+    // toute erreur ici ne doit jamais empêcher la sauvegarde des identifiants.
     localStorage.setItem('uvsq_edt_config', JSON.stringify(appConfig));
     toggleSettingsModal(false);
+
+    // Notifications : la permission doit être demandée dans un geste utilisateur (ce clic).
+    // Compatible promise ET callback : on protège les deux variantes.
+    if (notifyWanted && typeof Notification !== 'undefined') {
+        try {
+            if (Notification.permission === 'denied') {
+                alert("Les notifications sont bloquées pour ce site dans le réglage du navigateur/Safari : autorisez-les pour recevoir les alertes de cours.");
+            } else if (Notification.permission === 'default') {
+                const req = Notification.requestPermission();
+                if (req && typeof req.catch === 'function') req.catch(() => {}); // promesse
+            }
+        } catch (err) { /* variante inconnue : aucune conséquence sur la sauvegarde */ }
+    }
     fetchTimetableData(true);
 }
 
