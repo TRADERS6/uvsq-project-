@@ -33,6 +33,17 @@ export default async function handler(req, res) {
 
     if (req.method === 'OPTIONS') return res.status(200).end();
 
+    // Garde de méthodes : GET (PWA + widget) et POST (réservé à un usage
+    // futur) uniquement, comme api/mail.js — tout le reste est refusé net.
+    if (req.method !== 'GET' && req.method !== 'POST') {
+        return res.status(405).json({
+            success: false,
+            error: 'method_not_allowed',
+            message: 'Méthode non autorisée (GET ou POST uniquement).',
+            events: []
+        });
+    }
+
     // Rate-limit par IP (bucket de jetons), avant tout le reste : cheap
     const limiter = rateLimit(`edt:${clientIp(req.headers)}`, {
         burst: Number(process.env.RATE_LIMIT_BURST || 60),
