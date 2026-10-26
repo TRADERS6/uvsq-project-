@@ -80,6 +80,8 @@ function saveOnboarding(e) {
     appConfig.apiPass = document.getElementById('onboarding-api-pass').value;
     localStorage.setItem('uvsq_edt_config', JSON.stringify(appConfig));
     document.getElementById('onboarding-modal').classList.add('hidden');
+    // Premier lancement accepté : on ouvre directement la messagerie
+    if (typeof hasMailCreds === 'function' && hasMailCreds()) switchTab('mail');
     fetchTimetableData(true);
 }
 
@@ -244,8 +246,13 @@ window.addEventListener('load', () => {
     safe(loadSettings);
     safe(checkIosPrompt);
     safe(() => {
-        if (isConfigured()) fetchTimetableData();
-        else showOnboarding();   // premier lancement : avant toute synchro, on demande le n° étudiant
+        if (isConfigured()) {
+            fetchTimetableData();
+            // Retour utilisateur : dès que les identifiants existent, l'app
+            // s'ouvre directement sur la messagerie (EDT en second onglet).
+            // switchTab déclenche lui-même la synchro de la boîte (ou sert le cache).
+            if (typeof hasMailCreds === 'function' && hasMailCreds()) switchTab('mail');
+        } else showOnboarding();   // premier lancement : avant toute synchro, on demande le n° étudiant
     });
     safe(startCountdownTimer);
 });

@@ -102,10 +102,15 @@ function renderTimetable() {
     emptyState.classList.toggle('hidden', container.children.length > 0);
 }
 
+// Choix utilisateur : la vue EDT reste toujours neutre, même si l'API échoue
+// (plus de bandeau « Impossible de récupérer les cours ») — la trace reste en
+// console pour le debug, et le statut de synchro de l'entête reste visible.
 function showErrorState(msg) {
+    if (msg && window.console) console.warn('EDT indisponible :', msg);
     const emptyState = document.getElementById('empty-state');
-    emptyState.querySelector('h3').textContent = 'Impossible de récupérer les cours';
-    emptyState.querySelector('p').textContent = msg;
+    if (!emptyState) return;
+    emptyState.querySelector('h3').textContent = 'Aucun cours prévu';
+    emptyState.querySelector('p').textContent = 'Profitez de votre journée libre ou ajustez vos critères de recherche !';
 }
 
 // BANDEAU DE PERIODE : date précise selon la vue active
@@ -144,7 +149,7 @@ function renderWeekView(container, events) {
         const section = document.createElement('div');
         section.className = 'space-y-2';
         section.innerHTML = `
-            <div class="text-xs font-bold uppercase tracking-wider text-slate-400 px-1 pt-2 flex items-center justify-between">
+            <div class="text-xs font-bold uppercase tracking-wider text-slate-400 px-1 pt-2 flex flex-wrap items-center justify-center gap-2 text-center">
                 <span>${dayNames[i]} ${currentDay.getDate()} ${currentDay.toLocaleDateString('fr-FR', { month: 'short' })}</span>
                 <span class="text-[10px] text-slate-600 font-normal">${dayEvents.length} cours</span>
             </div>
