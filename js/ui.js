@@ -315,6 +315,36 @@ function updateNextClassCountdown() {
     badgeEl.textContent = next.type;
 }
 
+// ALERTE « COURS IMMINENT » (réglage cfg-notify, permission demandée à
+// l'enregistrement) : appelée par la boucle du minuteur ci-dessous. Une seule
+// notification par cours (mémorisation locale) et 10 min avant le début seulement.
+let lastNotifiedKey = '';
+
+function checkUpcomingNotifications() {
+    // Sans le réglage, sans l'API du navigateur (ancien Safari iOS) ou sans la
+    // permission accordée : rien à faire, la boucle continue en silence.
+    if (!appConfig.notify || typeof Notification === 'undefined' || Notification.permission !== 'granted') return;
+    const next = timetableData
+        .map(e => ({ ...e, startDate: new Date(e.start) }))
+        .filter(e => e.startDate > new Date())
+        .sort((a, b) => a.startDate - b.startDate)[0];
+    if (!next) return;
+    const mins = (next.startDate - Date.now()) / 60000;
+    if (mins <= 0 || mins > 10) return; // hors fenêtre 10 min : pas d'alerte
+    const key = `${next.title}|${next.start}`;
+    if (key === lastNotifiedKey) return; // déjà alerté pour ce cours
+    lastNotifiedKey = key;
+    try {
+        new Notification('Cours imminent', {
+            body: `${next.title} à ${formatTime(next.startDate)}${next.room ? ' · ' + next.room : ''}`,
+            tag: 'uvsq-edt-imminent',
+        });
+    } catch (e) {
+        // Un échec de notification ne doit jamais casser la boucle EDT
+        console.warn('Notification non envoyée :', e);
+    }
+}
+
 function startCountdownTimer() {
     setInterval(() => {
         updateNextClassCountdown();
