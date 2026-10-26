@@ -141,7 +141,7 @@ function saveMailCache() {
 }
 
 function showMailSyncStatus(detail) {
-    document.getElementById('mail-sync').textContent = `mail.partage.renater.fr · ${detail}`;
+    document.getElementById('mail-sync').textContent = `partage.uvsq.fr · ${detail}`;
 }
 
 function renderMailError(msg) {
