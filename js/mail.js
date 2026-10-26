@@ -8,11 +8,13 @@ let mailData = [];        // liste {uid, subject, from, to, date, unread}
 let currentMail = null;   // mail ouvert dans le lecteur
 let mailContacts = [];    // carnet d'adresses {name, address, fromEdt}
 
-// ---------- identifiants Partage ----------
+// ---------- identifiants : une seule connexion ----------
+// L'ENT et la messagerie Partage partagent la même authentification UVSQ :
+// les identifiants déjà saisis pour l'emploi du temps servent aussi aux e-mails.
 function getMailCreds() {
     return {
-        user: appConfig.mailUser || appConfig.apiUser || '',
-        pass: appConfig.mailPass || appConfig.apiPass || ''
+        user: appConfig.apiUser || '',
+        pass: appConfig.apiPass || ''
     };
 }
 
@@ -94,11 +96,11 @@ async function fetchMails(force) {
             // Identifiants refusés : le cache peut appartenir à un autre compte
             localStorage.removeItem('uvsq_mail_cache');
             mailData = [];
-            renderMailError(data.message || 'Identifiants Partage refusés par le serveur.');
+            renderMailError(data.message || 'Identifiants ENT refusés par le serveur de messagerie.');
             showMailSyncStatus('identifiants refusés');
         } else if (res.status === 401) {
             mailData = [];
-            renderMailError(data.message || 'Identifiants Partage refusés ou manquants.');
+            renderMailError(data.message || 'Identifiants ENT refusés ou manquants pour la messagerie.');
         } else {
             renderMailError(data.message || `Erreur API /api/mail (HTTP ${res.status}).`);
         }
@@ -316,7 +318,7 @@ function showComposeError(msg) {
 async function handleSendMail(ev) {
     if (ev && ev.preventDefault) ev.preventDefault();
     if (!hasMailCreds()) {
-        showComposeError('Renseigne tes identifiants Partage dans les paramètres avant d\'envoyer.');
+        showComposeError('Renseigne tes identifiants ENT dans les paramètres avant d\'envoyer.');
         return;
     }
 

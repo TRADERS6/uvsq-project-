@@ -44,7 +44,7 @@ Un vrai widget d'écran d'accueil iOS via l'app gratuite **Scriptable** :
 ## ✨ Ce que l'app fait
 
 - 📆 Ton EDT UVSQ en vues **jour, semaine et mois**
-- ✉️ Ta **messagerie UVSQ** (Partage) : lecture et envoi d'e-mails, adaptée au mobile — plus besoin de l'interface web non responsive de mail.partage.renater.fr (onglet « Messagerie » de l'app ; identifiants à renseigner dans les paramètres, optionnels)
+- ✉️ Ta **messagerie UVSQ** (Partage) : lecture et envoi d'e-mails, adaptée au mobile — plus besoin de l'interface web non responsive de mail.partage.renater.fr (onglet « Messagerie » de l'app ; utilise tes identifiants ENT — une seule connexion sert à l'emploi du temps et aux e-mails)
 - ⏰ **Prochain cours en direct**
 - 📴 **Fonctionne hors ligne** : l'app s'ouvre et affiche le dernier EDT connu, même sans réseau
 - 🔒 **Rien n'est stocké sur un serveur** : tes infos restent sur ton téléphone

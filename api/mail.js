@@ -84,7 +84,7 @@ export default async function handler(req, res) {
             success: false,
             error: 'missing_credentials',
             server_credentials_configured: !!process.env.MAIL_USERNAME && !!process.env.MAIL_PASSWORD,
-            message: "Identifiants messagerie absents : renseigne ton identifiant et ton mot de passe Partage dans les paramètres de la PWA."
+            message: "Identifiants ENT absents : renseigne-les dans les paramètres de la PWA — la même connexion sert à l'emploi du temps et à la messagerie."
         });
     }
 

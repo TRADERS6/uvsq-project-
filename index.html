@@ -221,7 +221,7 @@
                     <i class="fa-solid fa-envelope-open"></i>
                 </div>
                 <h3 class="text-sm font-semibold text-white">Messagerie UVSQ</h3>
-                <p class="text-xs text-slate-400 mt-1 max-w-xs mx-auto">Ajoute tes identifiants Partage dans les paramètres pour lire et envoyer tes e-mails UVSQ ici, sans zoom (remplace mail.partage.renater.fr sur mobile).</p>
+                <p class="text-xs text-slate-400 mt-1 max-w-xs mx-auto">Renseigne tes identifiants ENT dans les paramètres pour lire et envoyer tes e-mails UVSQ ici, sans zoom (remplace mail.partage.renater.fr sur mobile). La même connexion sert à l'emploi du temps.</p>
                 <button onclick="toggleSettingsModal(true)" class="mt-4 px-4 py-2 bg-brand-600 hover:bg-brand-500 text-white font-semibold rounded-xl text-xs transition shadow-lg shadow-brand-500/20">Ouvrir les paramètres</button>
             </div>
 
@@ -350,16 +350,7 @@
                 <div>
                     <label class="block text-xs font-semibold text-slate-300 mb-1.5">Mot de passe ENT UVSQ</label>
                     <input type="password" id="cfg-api-pass" autocomplete="off" placeholder="••••••••" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-brand-500 transition font-mono">
-                    <p class="text-[11px] text-slate-500 mt-1">Stocké sur votre téléphone, transmis chiffré à /api/edt. Alternative serveur : CELCAT_USERNAME / CELCAT_PASSWORD dans Vercel.</p>
-                </div>
-
-                <div class="border-t border-slate-800 pt-3">
-                    <p class="text-[10px] uppercase font-bold tracking-wider text-slate-500 mb-2"><i class="fa-solid fa-envelope text-brand-400 mr-1"></i>Messagerie Partage (e-mails UVSQ) — optionnel</p>
-                    <label class="block text-xs font-semibold text-slate-300 mb-1.5">Identifiant Partage</label>
-                    <input type="text" id="cfg-mail-user" placeholder="ex : prenom.nom ou prenom.nom@etu.uvsq.fr" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-brand-500 transition font-mono">
-                    <label class="block text-xs font-semibold text-slate-300 mb-1.5 mt-2.5">Mot de passe messagerie</label>
-                    <input type="password" id="cfg-mail-pass" autocomplete="off" placeholder="••••••••" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-brand-500 transition font-mono">
-                    <p class="text-[11px] text-slate-500 mt-1">Laisse vide pour réutiliser tes identifiants ENT (la plupart du temps identiques). Stocké sur ton téléphone, transmis chiffré à /api/mail qui parle en IMAP/SSL à mail.partage.renater.fr. Alternative serveur : MAIL_USERNAME / MAIL_PASSWORD dans Vercel.</p>
+                    <p class="text-[11px] text-slate-500 mt-1">Stocké sur votre téléphone, transmis chiffré à /api/edt et à /api/mail (e-mails Partage) : une seule connexion sert à l'emploi du temps et à la messagerie. Alternative serveur : CELCAT_USERNAME / CELCAT_PASSWORD dans Vercel.</p>
                 </div>
 
                 <div class="flex items-center justify-between gap-3 bg-slate-950/60 border border-slate-800 rounded-xl px-3.5 py-2.5">
