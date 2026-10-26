@@ -355,14 +355,76 @@ function renderMailReader(mail) {
     attach.innerHTML = '';
     if (mail.attachments && mail.attachments.length > 0) {
         mail.attachments.forEach(a => {
-            const chip = document.createElement('span');
-            chip.className = 'inline-flex items-center gap-1.5 px-2.5 py-1 bg-slate-900 border border-slate-700 text-[10px] text-slate-300 rounded-xl';
-            chip.innerHTML = `<i class="fa-solid fa-paperclip text-slate-500"></i><span class="truncate max-w-[9rem]">${escapeHtml(a.name)}</span>`;
+            // Pièce jointe téléchargeable quand le numéro de part IMAP est connu
+            // (sinon puce passive). La taille est affichée quand le serveur la donne.
+            const canDownload = !!a.part;
+            const chip = document.createElement(canDownload ? 'button' : 'span');
+            chip.className = canDownload
+                ? 'inline-flex items-center gap-1.5 px-2.5 py-1 bg-brand-600/20 border border-brand-500/50 text-brand-200 text-[10px] rounded-xl active:scale-95 transition'
+                : 'inline-flex items-center gap-1.5 px-2.5 py-1 bg-slate-900 border border-slate-700 text-[10px] text-slate-300 rounded-xl';
+            chip.title = canDownload ? 'Télécharger la pièce jointe' : 'Disponible via le webmail Partage';
+            chip.innerHTML = `<i class="fa-solid ${canDownload ? 'fa-file-arrow-down' : 'fa-paperclip'} ${canDownload ? 'text-brand-300' : 'text-slate-500'}"></i><span class="truncate max-w-[9rem]">${escapeHtml(a.name)}</span>${a.size ? `<span class="text-slate-500">· ${formatFileSize(a.size)}</span>` : ''}`;
+            if (canDownload) chip.onclick = () => downloadAttachment(a);
             attach.appendChild(chip);
         });
         attach.classList.remove('hidden');
     } else {
         attach.classList.add('hidden');
+    }
+}
+
+// 1 Ko / 1,2 Mo… lisible sur une puce
+function formatFileSize(bytes) {
+    const n = Number(bytes) || 0;
+    if (n >= 1024 * 1024) return `${(n / (1024 * 1024)).toFixed(1)} Mo`;
+    if (n >= 1024) return `${Math.round(n / 1024)} Ko`;
+    return `${n} o`;
+}
+
+// Téléchargement d'une pièce jointe : contenu base64 renvoyé par l'API,
+// converti en Blob puis fichier téléchargé. Pas de stockage disque côté app.
+async function downloadAttachment(a) {
+    if (!a || !a.part || !currentMail || !hasMailCreds()) return;
+    const uid = currentMail.uid;
+    const flash = (txt) => { // retour visuel minimal sur la puce pendant l'aller-retour
+        const box = document.getElementById('reader-attachments');
+        const note = document.getElementById('attach-note');
+        if (note) note.remove();
+        const p = document.createElement('p');
+        p.id = 'attach-note';
+        p.className = 'text-[10px] text-slate-400 w-full';
+        p.textContent = txt;
+        box.appendChild(p);
+        return () => p.remove();
+    };
+    let stop = null;
+    try {
+        stop = flash('Téléchargement en cours…');
+        const c = getMailCreds();
+        const res = await fetch(`/api/mail?uid=${encodeURIComponent(uid)}&folder=${currentFolder}&part=${encodeURIComponent(a.part)}`, {
+            headers: { 'x-mail-user': c.user, 'x-mail-pass': c.pass }
+        });
+        const data = await res.json().catch(() => ({}));
+        stop && stop();
+        if (!res.ok || !data.success || !data.attachment || !data.attachment.content) {
+            alert(data.message || `Téléchargement échoué (HTTP ${res.status}).`);
+            return;
+        }
+        const bin = atob(data.attachment.content);
+        const bytes = new Uint8Array(bin.length);
+        for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+        const blob = new Blob([bytes], { type: a.type || 'application/octet-stream' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = a.name || 'piece-jointe';
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 30000);
+    } catch (e) {
+        stop && stop();
+        alert('Connexion impossible. Vérifie le réseau puis réessaie.');
     }
 }
 

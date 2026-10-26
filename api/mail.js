@@ -7,7 +7,7 @@
 //
 // Durcissement : même CORS optionnel (ALLOWED_ORIGIN) et même rate-limit
 // (RATE_LIMIT_BURST / RATE_LIMIT_PER_SEC) que /api/edt, compteur séparé « mail: ».
-import { listRecentMails, getMail, sendMessage, deleteMail, moveMail, archiveMail } from '../lib/mail.js';
+import { listRecentMails, getMail, getAttachment, sendMessage, deleteMail, moveMail, archiveMail } from '../lib/mail.js';
 import { rateLimit } from '../lib/rate-limit.js';
 
 const allowedOrigin = () => process.env.ALLOWED_ORIGIN || '';
@@ -108,6 +108,20 @@ export default async function handler(req, res) {
 
             const uidQuery = req.query.uid;
             if (uidQuery) {
+                // ?part=P : téléchargement d'une pièce jointe (base64, 3 Mo max).
+                // Le uid et la part sont propres au dossier affiché.
+                const partQuery = req.query.part;
+                if (partQuery) {
+                    const r = await getAttachment(user, pass, uidQuery, folder, partQuery);
+                    return res.status(200).json({
+                        success: true,
+                        source: 'partage_imap',
+                        folder,
+                        login: r.login,
+                        attachment: r.attachment
+                    });
+                }
+
                 // Le uid est propre au dossier : lecture de la boîte affichée
                 const r = await getMail(user, pass, uidQuery, folder);
                 return res.status(200).json({
@@ -185,6 +199,7 @@ export default async function handler(req, res) {
         if (kind === 'validation') return respondError(res, 400, error);
         if (kind === 'no_such_mail') return respondError(res, 404, error);
         if (kind === 'no_such_folder') return respondError(res, 404, error);
+        if (kind === 'attachment_too_big') return respondError(res, 413, error);
 
         return respondError(res, 502, error);
     }
