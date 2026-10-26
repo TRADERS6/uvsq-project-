@@ -45,10 +45,22 @@ Un vrai widget d'écran d'accueil iOS via l'app gratuite **Scriptable** :
 
 - 📆 Ton EDT UVSQ en vues **jour, semaine et mois**
 - ✉️ Ta **messagerie UVSQ** (Partage) : lecture et envoi d'e-mails, adaptée au mobile — plus besoin de l'interface web non responsive (onglet « Messagerie » de l'app ; identifiants UVSQ, la messagerie attend ton adresse mail @etu.uvsq.fr comme login — [doc UVSQ](https://www.uvsq.fr/comment-consulter-vos-messages))
+- 🔔 **Alerte « cours imminent »** (optionnelle) : notifie 10 min avant le début d'un cours si l'autorisation de notification est accordée
 - ⏰ **Prochain cours en direct**
 - 📴 **Fonctionne hors ligne** : l'app s'ouvre et affiche le dernier EDT connu, même sans réseau
 - 🔒 **Rien n'est stocké sur un serveur** : tes infos restent sur ton téléphone
 - 🌙 Interface sombre, pensée pour le mobile
+
+## 🗒️ Nouveautés récentes
+
+**Mise à jour d'octobre 2026 — la messagerie bien mieux orchestrée**
+
+- 📮 **Connecté = Messagerie en premier onglet** : dès que tes identifiants existent dans l'app, elle s'ouvre directement sur la messagerie (l'EDT se charge en tâche de fond, toujours accessible en bas).
+- 🔎 **EDT toujours neutre** : en cas d'échec de l'API, la vue affiche « Aucun cours prévu » comme un jour libre — plus de bandeau rouge d'erreur (la trace reste visible dans la console via F12).
+- 🧭 **Connexion simplifiée** : entre ton numéro étudiant seul, l'app essaie automatiquement les formats d'adresse UVSQ (ex. `numero@etu.uvsq.fr`). Si le serveur n'en accepte aucun, elle te dit précisément d'utiliser ton adresse mail complète. Le format gagnant est mémorisé : plus jamais à le ressaisir.
+- 🖥️ **Bouton « Enregistrer » réparé sur PC** : sur certains navigateurs (Firefox/Safari variants), la demande de permission de notification bloquait la sauvegarde — c'est corrigé, la sauvegarde se fait toujours en premier.
+- 📬 **Serveurs Partage officiels** : connexion désormais pointée vers `partage.uvsq.fr` (IMAP port 993, SMTP port 465) selon la doc UVSQ — cause du « impossible de récupérer les emails » corrigée.
+- 🔔 **L'alerte « cours imminent » fonctionne vraiment** : elle était appelée par le minuteur mais jamais définie dans le code (rien ne s'envoyait jamais) — la notification est désormais en place, une seule fois par cours.
 
 ## 🔐 Confidentialité
 
@@ -61,7 +73,7 @@ Détails techniques : [docs/SECURITE-API.md](docs/SECURITE-API.md)
 | Élément | Détail |
 |---|---|
 | Interface | HTML + Tailwind CSS, PWA installable (manifeste + service worker) |
-| Backend | Fonction serverless Vercel (`api/edt.js`), proxy → CELCAT UVSQ |
+| Backend | Fonctions serverless Vercel (`api/edt.js` proxy → CELCAT UVSQ, `api/mail.js` → serveurs Partage UVSQ) |
 | Hébergement | Vercel (gratuit), HTTPS automatique |
 | Widget iOS | Scriptable (voir [widget/README.md](widget/README.md)) |
 
@@ -74,8 +86,10 @@ Détails techniques : [docs/SECURITE-API.md](docs/SECURITE-API.md)
 ### Développement local
 
 ```bash
-npx serve .        # ou tout autre serveur statique (toutes les dépendances sont des CDN)
+npx vercel dev     # front + fonctions API (/api/edt, /api/mail) — l'EDT et la messagerie fonctionnent
 ```
+
+> ⚠️ Un serveur statique (`npx serve .`) ne suffit pas : les API `/api/*` sont des fonctions Vercel, l'EDT et les e-mails ne marcheront pas.
 
 ---
 
