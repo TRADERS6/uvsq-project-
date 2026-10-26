@@ -7,9 +7,11 @@ let appConfig = {
     cid: '-1742253826;1073733534;175432540;108',
     sourceMode: 'API',
     apiUser: '',
-    apiPass: ''
+    apiPass: '',
+    mailLogin: ''
     // Une seule connexion : les identifiants ENT servent aussi à la
-    // messagerie Partage (voir getMailCreds dans js/mail.js).
+    // messagerie. mailLogin est interne : le format de login Partage que le
+    // serveur a découvert et renvoyé (numero@etu.uvsq.fr ou l'adresse complète).
 };
 
 // APPLICATION STATE
@@ -120,6 +122,7 @@ function clearCredentials() {
     if (!confirm('Effacer vos identifiants UVSQ et les cours mis en cache de cet appareil ?')) return;
     appConfig.apiUser = '';
     appConfig.apiPass = '';
+    appConfig.mailLogin = ''; // découvert au fil des connexions : purgé avec les identifiants
     localStorage.setItem('uvsq_edt_config', JSON.stringify(appConfig));
     Object.keys(localStorage).filter(k => k.startsWith('uvsq_edt_api_')).forEach(k => localStorage.removeItem(k));
     // Cache de la boîte de réception : avec les identifiants partis, ces mails

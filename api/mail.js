@@ -93,20 +93,26 @@ export default async function handler(req, res) {
         if (req.method === 'GET') {
             const uidQuery = req.query.uid;
             if (uidQuery) {
-                const mail = await getMail(user, pass, uidQuery);
-                return res.status(200).json({ success: true, source: 'partage_imap', mail });
+                const r = await getMail(user, pass, uidQuery);
+                return res.status(200).json({
+                    success: true,
+                    source: 'partage_imap',
+                    login: r.login, // format de login accepté (front le mémorise)
+                    mail: r.mail
+                });
             }
 
             let limit = Number.parseInt(req.query.limit, 10);
             if (!Number.isFinite(limit)) limit = 15;
             limit = Math.min(50, Math.max(1, limit));
-            const mails = (await listRecentMails(user, pass, limit)).slice(0, limit);
+            const r = await listRecentMails(user, pass, limit);
             return res.status(200).json({
                 success: true,
                 source: 'partage_imap',
-                count: mails.length,
+                login: r.login,
+                count: r.mails.length,
                 fetchedAt: new Date().toISOString(),
-                mails
+                mails: r.mails
             });
         }
 
@@ -120,8 +126,10 @@ export default async function handler(req, res) {
         return res.status(200).json({
             success: true,
             source: 'partage_smtp',
+            login: result.login,
             message: `Message envoyé à ${result.to.join(', ')}.`,
-            ...result
+            from: result.from,
+            messageId: result.messageId
         });
     } catch (error) {
         const kind = error.kind || 'unknown';

@@ -10,12 +10,28 @@ let mailContacts = [];    // carnet d'adresses {name, address, fromEdt}
 
 // ---------- identifiants : une seule connexion ----------
 // L'ENT et la messagerie Partage partagent la même authentification UVSQ :
-// les identifiants déjà saisis pour l'emploi du temps servent aussi aux e-mails.
+// les identifiants saisis pour l'emploi du temps servent aussi aux e-mails.
+// Si un simple numéro étudiant a été saisi, le serveur essaie seul les
+// formats « numero@etu.uvsq.fr » / « numero@uvsq.fr » et nous renvoie le
+// format gagnant (rememberLogin) — plus aucune saisie supplémentaire.
 function getMailCreds() {
     return {
-        user: appConfig.apiUser || '',
+        user: appConfig.mailLogin || appConfig.apiUser || '',
         pass: appConfig.apiPass || ''
     };
+}
+
+// Le serveur renvoie data.login = le format de login accepté par Partage :
+// mémorisé localement pour que les appels suivants tapent directement le
+// bon format (aucune action de l'étudiant ni seconde case).
+function rememberLogin(data) {
+    try {
+        const current = appConfig.mailLogin || appConfig.apiUser || '';
+        if (data && data.login && data.login !== current) {
+            appConfig.mailLogin = data.login;
+            localStorage.setItem('uvsq_edt_config', JSON.stringify(appConfig));
+        }
+    } catch (e) { /* stockage indisponible : non bloquant */ }
 }
 
 function hasMailCreds() {
@@ -87,6 +103,7 @@ async function fetchMails(force) {
 
         if (res.ok && data.success && Array.isArray(data.mails)) {
             mailData = data.mails;
+            rememberLogin(data);
             saveMailCache();
             showMailSyncStatus(`synchronisé à ${new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })} · ${data.count} mail(s)`);
             updateMailBadge();
@@ -241,6 +258,7 @@ async function openMailReader(uid) {
             return;
         }
         currentMail = data.mail;
+        rememberLogin(data);
         renderMailReader(data.mail);
 
         // Marque lu côté client (le serveur a déjà flaggé \Seen) : persiste
@@ -356,6 +374,7 @@ async function handleSendMail(ev) {
         const data = await res.json().catch(() => ({}));
 
         if (res.ok && data.success) {
+            rememberLogin(data);
             document.getElementById('mail-compose').classList.add('hidden');
             fetchMails(true);
         } else {
