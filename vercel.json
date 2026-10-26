@@ -2,6 +2,9 @@
   "functions": {
     "api/edt.js": {
       "regions": ["cdg1"]
+    },
+    "api/mail.js": {
+      "regions": ["cdg1"]
     }
   },
   "headers": [

@@ -7,7 +7,9 @@ let appConfig = {
     cid: '-1742253826;1073733534;175432540;108',
     sourceMode: 'API',
     apiUser: '',
-    apiPass: ''
+    apiPass: '',
+    mailUser: '',   // Partage : vide = on réutilise les identifiants ENT
+    mailPass: ''
 };
 
 // APPLICATION STATE
@@ -37,6 +39,8 @@ function loadSettings() {
     document.getElementById('cfg-cid').value = appConfig.cid;
     document.getElementById('cfg-api-user').value = appConfig.apiUser;
     document.getElementById('cfg-api-pass').value = appConfig.apiPass;
+    document.getElementById('cfg-mail-user').value = appConfig.mailUser || '';
+    document.getElementById('cfg-mail-pass').value = appConfig.mailPass || '';
     document.getElementById('cfg-notify').checked = !!appConfig.notify;
 }
 
@@ -87,6 +91,9 @@ function saveSettings(e) {
     appConfig.cid = /^-?[0-9;]+$/.test(cidRaw) && cidRaw ? cidRaw : '-1742253826;1073733534;175432540;108';
     appConfig.apiUser = document.getElementById('cfg-api-user').value.trim();
     appConfig.apiPass = document.getElementById('cfg-api-pass').value;
+    // Messagerie Partage : optionnel, vide = réutilise les identifiants ENT
+    appConfig.mailUser = document.getElementById('cfg-mail-user').value.trim();
+    appConfig.mailPass = document.getElementById('cfg-mail-pass').value;
     appConfig.sourceMode = 'API';
 
     // Notifications : la permission doit être demandée dans un geste utilisateur (ce clic)
@@ -110,6 +117,10 @@ function clearCredentials() {
     appConfig.apiPass = '';
     localStorage.setItem('uvsq_edt_config', JSON.stringify(appConfig));
     Object.keys(localStorage).filter(k => k.startsWith('uvsq_edt_api_')).forEach(k => localStorage.removeItem(k));
+    // Cache de la boîte de réception : avec les identifiants partis, ces mails
+    // ne doivent plus être lisibles hors-ligne sur cet appareil
+    localStorage.removeItem('uvsq_mail_cache');
+    mailData = [];
     document.getElementById('cfg-api-user').value = '';
     document.getElementById('cfg-api-pass').value = '';
     timetableData = [];
