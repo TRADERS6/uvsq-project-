@@ -59,6 +59,7 @@ function switchTab(tab) {
             showMailSyncStatus(`cache local du ${new Date(cache.fetchedAt).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}`);
         }
         if (hasMailCreds()) fetchMails(false);
+        else document.getElementById('mail-need-creds').classList.remove('hidden');
     }
     window.scrollTo({ top: 0 });
 }
