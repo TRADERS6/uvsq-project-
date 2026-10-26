@@ -75,6 +75,16 @@ await expect('mail POST move target=bogus → 400 bad_request',
 // POST action=archive depuis archive → 400 validation ("déjà archivé"), sans réseau
 await expect('mail POST archive depuis archive → 400 validation',
     mailHandler({ method: 'POST', headers: CREDS, body: { action: 'archive', uid: 1, folder: 'archive' } }, makeRes()), 400, 'validation');
+// Garde-fou (uid, dossier) : un déplacement SOURCE == DESTINATION ferait un
+// couple incohérent (le mail sév open du dossier précédent) → 400 validation
+await expect('mail POST move target==folder → 400 validation',
+    mailHandler({ method: 'POST', headers: CREDS, body: { action: 'move', uid: 1, folder: 'inbox', target: 'inbox' } }, makeRes()), 400, 'validation');
+// un déplacement DEPUIS un dossier non whitelisté → 400 bad_request
+await expect('mail POST move depuis folder=bogus → 400 bad_request',
+    mailHandler({ method: 'POST', headers: CREDS, body: { action: 'move', uid: 1, folder: 'bogus', target: 'trash' } }, makeRes()), 400, 'bad_request');
+// une suppression depuis un dossier non whitelisté → 400 bad_request
+await expect('mail POST delete folder=bogus → 400 bad_request',
+    mailHandler({ method: 'POST', headers: CREDS, body: { action: 'delete', uid: 1, folder: 'bogus' } }, makeRes()), 400, 'bad_request');
 // POST envoi sans corps utile → 400 validation (destinataire manquant)
 await expect('mail POST send sans to → 400 validation',
     mailHandler({ method: 'POST', headers: CREDS, body: { subject: 'x', text: 'y' } }, makeRes()), 400, 'validation');
