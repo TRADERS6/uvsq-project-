@@ -8,6 +8,58 @@ let mailData = [];        // liste {uid, subject, from, to, date, unread}
 let currentMail = null;   // mail ouvert dans le lecteur
 let mailContacts = [];    // carnet d'adresses {name, address, fromEdt}
 
+// ---------- dossiers (réception, envoyés, spam, corbeille) ----------
+let currentFolder = 'inbox';        // dossier affiché dans la liste
+let folderAvailability = ['inbox']; // dossiers découverts sur le compte (API ?folder)
+
+const FOLDER_LABELS = {
+    inbox: 'Boîte de réception',
+    sent: 'Envoyés',
+    junk: 'Spam',
+    trash: 'Corbeille'
+};
+const FOLDER_ICONS = {
+    inbox: 'fa-inbox',
+    sent: 'fa-paper-plane',
+    junk: 'fa-ban',
+    trash: 'fa-trash-can'
+};
+
+function renderFolderChips() {
+    const bar = document.getElementById('mail-folders');
+    if (!bar) return;
+    bar.innerHTML = '';
+    const title = document.getElementById('mail-folder-title');
+    if (title) title.textContent = `${FOLDER_LABELS[currentFolder] || currentFolder} · Partage`;
+    for (const id of folderAvailability) {
+        const chip = document.createElement('button');
+        const active = id === currentFolder;
+        chip.className = active
+            ? 'flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-bold bg-brand-600 text-white border border-brand-400/60 flex-shrink-0'
+            : 'flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-medium text-slate-400 bg-slate-900 border border-slate-800 hover:text-slate-200 flex-shrink-0 transition';
+        chip.innerHTML = `<i class="fa-solid ${FOLDER_ICONS[id] || 'fa-envelope'}"></i><span>${escapeHtml(FOLDER_LABELS[id] || id)}</span>`;
+        chip.onclick = () => selectFolder(id);
+        bar.appendChild(chip);
+    }
+}
+
+function selectFolder(id) {
+    if (id === currentFolder || !folderAvailability.includes(id)) return;
+    currentFolder = id;
+    const cache = loadMailCache();
+    mailData = cache && Array.isArray(cache.mails) ? cache.mails : [];
+    renderFolderChips();
+    document.getElementById('mail-list').innerHTML = '';
+    if (mailData.length > 0) renderMailList();
+    if (hasMailCreds()) fetchMails(false);
+    window.scrollTo({ top: 0 });
+}
+
+function mailCacheKey() {
+    // Clé par dossier (la clé historique reste celle de la boîte de réception)
+    return currentFolder === 'inbox' ? 'uvsq_mail_cache' : `uvsq_mail_cache_${currentFolder}`;
+}
+
 // ---------- identifiants : une seule connexion ----------
 // L'ENT et la messagerie Partage partagent la même authentification UVSQ :
 // les identifiants saisis pour l'emploi du temps servent aussi aux e-mails.
@@ -62,18 +114,17 @@ function switchTab(tab) {
     // Entête suit l'onglet
     document.getElementById('header-title').textContent = isEdt ? 'UVSQ EDT' : 'UVSQ Mail';
     const icon = document.getElementById('header-icon');
-    icon.className = isEdt ? 'fa-solid fa-calendar-days' : 'fa-solid fa-envelope';
-
-    // Ouvre la messagerie : le cache local s'affiche instantanément, le réseau
+    icon.className = isEdt ? 'fa-solid fa-calendar-days' : 'fa-solid fa-envelope';    // Ouvre la messagerie : le cache local s'affiche instantanément, le réseau
     // rafraîchit ensuite en arrière-plan (EDT en mode "Cache Local" équivalent)
     if (!isEdt && mailData.length === 0) {
         const cache = loadMailCache();
-        if (cache && cache.mails.length > 0) {
+            if (cache && cache.mails.length > 0) {
             mailData = cache.mails;
             document.getElementById('mail-need-creds').classList.add('hidden');
             updateMailBadge();
             buildAddressBook();
             renderMailList();
+            renderFolderChips();
             showMailSyncStatus(`cache local du ${new Date(cache.fetchedAt).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}`);
         }
         if (hasMailCreds()) fetchMails(false);
@@ -96,7 +147,9 @@ async function fetchMails(force) {
 
     try {
         const c = getMailCreds();
-        const res = await fetch(`/api/mail${force ? '?limit=15' : ''}`, {
+        const params = new URLSearchParams({ folder: currentFolder });
+        if (force) params.set('limit', '15');
+        const res = await fetch(`/api/mail?${params.toString()}`, {
             headers: { 'x-mail-user': c.user, 'x-mail-pass': c.pass }
         });
         const data = await res.json().catch(() => ({}));
@@ -104,6 +157,9 @@ async function fetchMails(force) {
         if (res.ok && data.success && Array.isArray(data.mails)) {
             mailData = data.mails;
             rememberLogin(data);
+            // Dossiers découverts côté serveur : la barre de chips suit
+            if (Array.isArray(data.folders) && data.folders.length > 0) folderAvailability = data.folders;
+            renderFolderChips();
             saveMailCache();
             showMailSyncStatus(`synchronisé à ${new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })} · ${data.count} mail(s)`);
             updateMailBadge();
@@ -111,7 +167,7 @@ async function fetchMails(force) {
             renderMailList();
         } else if (data.error === 'bad_credentials') {
             // Identifiants refusés : le cache peut appartenir à un autre compte
-            localStorage.removeItem('uvsq_mail_cache');
+            localStorage.removeItem(mailCacheKey());
             mailData = [];
             renderMailError(data.message || 'Identifiants ENT refusés par le serveur de messagerie.');
             showMailSyncStatus('identifiants refusés');
@@ -142,9 +198,10 @@ async function fetchMails(force) {
 // ---------- cache local de la boîte (consultation hors-ligne) ----------
 // Stocké uniquement sur l'appareil (localStorage), comme le cache EDT,
 // purgé si les identifiants sont effacés ou refusés par le serveur.
+// Une clé par dossier : inbox garde sa clé historique.
 function loadMailCache() {
     try {
-        const cache = JSON.parse(localStorage.getItem('uvsq_mail_cache') || 'null');
+        const cache = JSON.parse(localStorage.getItem(mailCacheKey()) || 'null');
         return cache && Array.isArray(cache.mails) ? cache : null;
     } catch (e) {
         return null;
@@ -153,7 +210,7 @@ function loadMailCache() {
 
 function saveMailCache() {
     try {
-        localStorage.setItem('uvsq_mail_cache', JSON.stringify({ mails: mailData, fetchedAt: Date.now() }));
+        localStorage.setItem(mailCacheKey(), JSON.stringify({ mails: mailData, fetchedAt: Date.now() }));
     } catch (e) { /* quota dépassé : pas bloquant */ }
 }
 
@@ -192,13 +249,14 @@ function renderMailList() {
     const esc = escapeHtml;
 
     if (mailData.length === 0) {
+        const label = FOLDER_LABELS[currentFolder] || 'ce dossier';
         list.innerHTML = `
             <div class="text-center py-10 bg-slate-900/40 rounded-2xl border border-slate-800/50">
                 <div class="w-14 h-14 mx-auto mb-3 rounded-full bg-slate-800/80 flex items-center justify-center text-slate-500 text-xl">
-                    <i class="fa-solid fa-mug-hot"></i>
+                    <i class="fa-solid ${FOLDER_ICONS[currentFolder] || 'fa-mug-hot'}"></i>
                 </div>
-                <h3 class="text-sm font-semibold text-white">Boîte vide</h3>
-                <p class="text-xs text-slate-400 mt-1">Aucun e-mail dans ta boîte de réception.</p>
+                <h3 class="text-sm font-semibold text-white">${escapeHtml(label)} — vide</h3>
+                <p class="text-xs text-slate-400 mt-1">Aucun e-mail dans « ${escapeHtml(label)} ».</p>
             </div>`;
         return;
     }
@@ -206,12 +264,15 @@ function renderMailList() {
     mailData.forEach(m => {
         const card = document.createElement('div');
         card.onclick = () => openMailReader(m.uid);
-        card.className = `bg-slate-900 border border-slate-800 rounded-2xl p-3.5 shadow-md flex flex-col gap-1.5 cursor-pointer transition active:scale-[0.98] hover:border-slate-700 border-l-4 ${m.unread ? 'border-l-brand-500' : 'border-l-slate-700'}`;
-        const name = m.from && (m.from.name || m.from.address) || 'Expéditeur inconnu';
+        card.className = `bg-slate-900 border border-slate-800 rounded-2xl p-3.5 shadow-md flex flex-col gap-1.5 cursor-pointer transition active:scale-[0.98] hover:border-slate-700 border-l-4 ${m.unread && currentFolder !== 'sent' ? 'border-l-brand-500' : 'border-l-slate-700'}`;
+        // Dans « Envoyés », l'expéditeur affiché est soi-même : on montre le
+        // destinataire à la place, comme sur n'importe quel client mail
+        const person = currentFolder === 'sent' ? (m.to && m.to[0]) : m.from;
+        const name = (person && (person.name || person.address)) || (currentFolder === 'sent' ? 'Destinataire inconnu' : 'Expéditeur inconnu');
         card.innerHTML = `
             <div class="flex items-start justify-between gap-2">
                 <div class="flex items-center gap-2 min-w-0">
-                    ${m.unread ? '<span class="w-2 h-2 rounded-full bg-brand-500 flex-shrink-0"></span>' : ''}
+                    ${m.unread && currentFolder !== 'sent' ? '<span class="w-2 h-2 rounded-full bg-brand-500 flex-shrink-0"></span>' : ''}
                     <p class="text-xs font-bold text-white truncate ${m.unread ? '' : 'text-slate-200'}">${esc(name)}</p>
                 </div>
                 <span class="text-[10px] font-mono text-slate-500 flex-shrink-0">${esc(formatMailDate(m.date))}</span>
@@ -223,7 +284,9 @@ function renderMailList() {
 }
 
 // ---------- badge non lus de la bottom nav ----------
+// Le badge reflète la seule boîte de réception (pas les dossiers consultés)
 function updateMailBadge() {
+    if (currentFolder !== 'inbox') return;
     const badge = document.getElementById('mail-unread-badge');
     const n = mailData.filter(m => m.unread).length;
     if (n > 0) {
@@ -249,7 +312,7 @@ async function openMailReader(uid) {
 
     try {
         const c = getMailCreds();
-        const res = await fetch(`/api/mail?uid=${encodeURIComponent(uid)}`, {
+        const res = await fetch(`/api/mail?uid=${encodeURIComponent(uid)}&folder=${currentFolder}`, {
             headers: { 'x-mail-user': c.user, 'x-mail-pass': c.pass }
         });
         const data = await res.json().catch(() => ({}));

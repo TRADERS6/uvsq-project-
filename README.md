@@ -44,7 +44,7 @@ Un vrai widget d'écran d'accueil iOS via l'app gratuite **Scriptable** :
 ## ✨ Ce que l'app fait
 
 - 📆 Ton EDT UVSQ en vues **jour, semaine et mois**
-- ✉️ Ta **messagerie UVSQ** (Partage) : lecture et envoi d'e-mails, adaptée au mobile — plus besoin de l'interface web non responsive (onglet « Messagerie » de l'app ; identifiants UVSQ, la messagerie attend ton adresse mail @etu.uvsq.fr comme login — [doc UVSQ](https://www.uvsq.fr/comment-consulter-vos-messages))
+- ✉️ Ta **messagerie UVSQ** (Partage) : lecture et envoi d'e-mails, adaptée au mobile — plus besoin de l'interface web non responsive (onglet « Messagerie » de l'app ; identifiants UVSQ, la messagerie attend ton adresse mail @etu.uvsq.fr comme login — [doc UVSQ](https://www.uvsq.fr/comment-consulter-vos-messages)). **Tous les dossiers** : Boîte de réception, Envoyés, Spam et Corbeille — les mails que tu envoies depuis l'app déposent leur copie dans « Envoyés », comme le webmail
 - 📔 **Carnet d'adresses auto-complété** : en rédigeant un mail, tape juste le nom — l'app te propose les adresses des **profs de ton EDT** et des personnes qui t'ont déjà écris (aucune adresse à retenir par cœur ; celles déduites de l'EDT sont signalées « à vérifier »)
 - 🔔 **Alerte « cours imminent »** (optionnelle) : notifie 10 min avant le début d'un cours si l'autorisation de notification est accordée
 - ⏰ **Prochain cours en direct**
@@ -61,6 +61,7 @@ Un vrai widget d'écran d'accueil iOS via l'app gratuite **Scriptable** :
 - 🧭 **Connexion simplifiée** : entre ton numéro étudiant seul, l'app essaie automatiquement les formats d'adresse UVSQ (ex. `numero@etu.uvsq.fr`). Si le serveur n'en accepte aucun, elle te dit précisément d'utiliser ton adresse mail complète. Le format gagnant est mémorisé : plus jamais à le ressaisir.
 - 🖥️ **Bouton « Enregistrer » réparé sur PC** : sur certains navigateurs (Firefox/Safari variants), la demande de permission de notification bloquait la sauvegarde — c'est corrigé, la sauvegarde se fait toujours en premier.
 - 📬 **Serveurs Partage officiels** : connexion désormais pointée vers `partage.uvsq.fr` (IMAP port 993, SMTP port 465) selon la doc UVSQ — cause du « impossible de récupérer les emails » corrigée.
+- 📂 **Dossiers IMAP complets** : la messagerie ne se limite plus à la réception — sélecteur de dossiers (Boîte de réception / Envoyés / Spam / Corbeille) alimenté par la découverte automatique des dossiers réels du compte Partage (attributs spéciaux IMAP \Sent, \Junk, \Trash, repli par nom). Les envois de l'app déposent leur copie dans « Envoyés » (best-effort), le uid de chaque mail est désormais résolu dans son propre dossier, les caches hors-ligne sont séparés par dossier et purgés à la déconnexion.
 - 📔 **Noms des profs proposés automatiquement** : quand tu écris un mail, tape les premières lettres du nom et l'app propose l'adresse — carnet alimenté par tes mails reçus et les profs de ton emploi du temps (celles déduites de l'EDT sont marquées « adresse déduite, à vérifier »).
 - 🔔 **L'alerte « cours imminent » fonctionne vraiment** : elle était appelée par le minuteur mais jamais définie dans le code (rien ne s'envoyait jamais) — la notification est désormais en place, une seule fois par cours.
 

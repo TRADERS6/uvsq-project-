@@ -127,9 +127,11 @@ function clearCredentials() {
     appConfig.mailLogin = ''; // découvert au fil des connexions : purgé avec les identifiants
     localStorage.setItem('uvsq_edt_config', JSON.stringify(appConfig));
     Object.keys(localStorage).filter(k => k.startsWith('uvsq_edt_api_')).forEach(k => localStorage.removeItem(k));
-    // Cache de la boîte de réception : avec les identifiants partis, ces mails
-    // ne doivent plus être lisibles hors-ligne sur cet appareil
-    localStorage.removeItem('uvsq_mail_cache');
+    // Caches messagerie (réception + envoyés/spam/corbeille) : avec les
+    // identifiants partis, ces mails ne doivent plus être lisibles hors-ligne
+    Object.keys(localStorage)
+        .filter(k => k === 'uvsq_mail_cache' || k.startsWith('uvsq_mail_cache_'))
+        .forEach(k => localStorage.removeItem(k));
     mailData = [];
     document.getElementById('cfg-api-user').value = '';
     document.getElementById('cfg-api-pass').value = '';

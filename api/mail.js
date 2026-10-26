@@ -12,6 +12,10 @@ import { rateLimit } from '../lib/rate-limit.js';
 
 const allowedOrigin = () => process.env.ALLOWED_ORIGIN || '';
 
+// Dossiers IMAP acceptés côté front : inbox toujours, sent/junk/trash selon
+// la découverte sur le compte (noms réels résolus dans lib/mail.js)
+const FOLDER_WHITELIST = ['inbox', 'sent', 'junk', 'trash'];
+
 function setCors(res) {
     const origin = allowedOrigin();
     res.setHeader('Access-Control-Allow-Origin', origin || '*');
@@ -91,12 +95,25 @@ export default async function handler(req, res) {
     try {
         // ---------- GET : liste des derniers mails, ou lecture d'un mail ----------
         if (req.method === 'GET') {
+            // ?folder=inbox|sent|junk|trash (inbox par défaut) : chaque dossier
+            // est une vraie boîte IMAP ouverte côté serveur
+            const folder = String(req.query.folder || 'inbox').toLowerCase();
+            if (!FOLDER_WHITELIST.includes(folder)) {
+                return res.status(400).json({
+                    success: false,
+                    error: 'bad_request',
+                    message: 'Dossier inconnu : inbox, sent, junk ou trash.'
+                });
+            }
+
             const uidQuery = req.query.uid;
             if (uidQuery) {
-                const r = await getMail(user, pass, uidQuery);
+                // Le uid est propre au dossier : lecture de la boîte affichée
+                const r = await getMail(user, pass, uidQuery, folder);
                 return res.status(200).json({
                     success: true,
                     source: 'partage_imap',
+                    folder,
                     login: r.login, // format de login accepté (front le mémorise)
                     mail: r.mail
                 });
@@ -105,11 +122,13 @@ export default async function handler(req, res) {
             let limit = Number.parseInt(req.query.limit, 10);
             if (!Number.isFinite(limit)) limit = 15;
             limit = Math.min(50, Math.max(1, limit));
-            const r = await listRecentMails(user, pass, limit);
+            const r = await listRecentMails(user, pass, limit, folder);
             return res.status(200).json({
                 success: true,
                 source: 'partage_imap',
+                folder,
                 login: r.login,
+                folders: r.folders || ['inbox'], // dossiers découverts sur le compte
                 count: r.mails.length,
                 fetchedAt: new Date().toISOString(),
                 mails: r.mails
@@ -138,6 +157,7 @@ export default async function handler(req, res) {
         if (kind === 'bad_credentials') return respondError(res, 401, error);
         if (kind === 'validation') return respondError(res, 400, error);
         if (kind === 'no_such_mail') return respondError(res, 404, error);
+        if (kind === 'no_such_folder') return respondError(res, 404, error);
 
         return respondError(res, 502, error);
     }

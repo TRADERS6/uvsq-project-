@@ -206,7 +206,7 @@
                         <i class="fa-solid fa-envelope"></i>
                     </div>
                     <div class="min-w-0">
-                        <h2 class="text-sm font-bold text-white leading-tight">Boîte de réception Partage</h2>
+                        <h2 id="mail-folder-title" class="text-sm font-bold text-white leading-tight">Boîte de réception Partage</h2>
                         <p id="mail-sync" class="text-[10px] text-slate-500 truncate">partage.uvsq.fr</p>
                     </div>
                 </div>
@@ -214,6 +214,9 @@
                     <i class="fa-solid fa-rotate-right" id="mail-refresh-icon"></i>
                 </button>
             </div>
+
+            <!-- Dossiers : réception, envoyés, spam, corbeille (découverts sur le compte) -->
+            <div id="mail-folders" class="flex gap-1.5 overflow-x-auto pb-1 -mt-1" aria-label="Dossiers de messagerie"></div>
 
             <!-- État : identifiants messagerie manquants -->
             <div id="mail-need-creds" class="hidden text-center py-8 px-4 bg-slate-900/40 rounded-2xl border border-slate-800/50">
