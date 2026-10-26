@@ -343,18 +343,151 @@ async function openMailReader(uid) {
     }
 }
 
+// ---------- présentation du lecteur selon le type de mail ----------
+// Mobile d'abord : un long publipostage ne se lit pas comme une note d'un
+// prof. Classification légère (aucun appel réseau, purement local) :
+//   invitation  — pièce jointe calendrier (VCALENDAR) ou objet « Invitation »
+//   newsletter  — publipostage (no-reply/newsletter, mots de désabonnement)
+//   notification— service UVSQ (adresse @uvsq.fr sans être @etu.uvsq.fr)
+//   personnel   — le reste : présentation neutre, aucune puce affichée
+const MAIL_KINDS = {
+    invitation: { label: 'Invitation', icon: 'fa-calendar-check', badge: 'text-brand-300 bg-brand-500/10 border-brand-500/20' },
+    newsletter: { label: 'Newsletter', icon: 'fa-bullhorn', badge: 'text-amber-300 bg-amber-500/10 border-amber-500/20' },
+    notification: { label: 'Service UVSQ', icon: 'fa-school', badge: 'text-sky-300 bg-sky-500/10 border-sky-500/20' },
+    personnel: null
+};
+
+function classifyMail(mail, from) {
+    const address = String((from && from.address) || '').toLowerCase();
+    const subject = String(mail.subject || '').toLowerCase();
+    const text = String(mail.text || '');
+    if (subject.includes('invitation') || text.slice(0, 20000).includes('BEGIN:VCALENDAR')) return 'invitation';
+    if (/no-?reply|donotreply|newsletter/i.test(address)
+        || /désabonne|unsubscribe|vous recevez ce message car|cet e-mail vous a été envoyé/i.test(text.slice(0, 8000))) return 'newsletter';
+    if (/^\S+@uvsq\.fr$/.test(address) && !/@etu\.uvsq\.fr$/.test(address)) return 'notification';
+    return 'personnel';
+}
+
+// Date « racontée » : aujourd'hui/hier gagnent en lisibilité sur petit écran
+function relativeMailDate(iso) {
+    if (!iso) return '';
+    const d = new Date(iso);
+    if (Number.isNaN(d.getTime())) return '';
+    const time = d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+    const now = new Date();
+    if (isSameDay(d, now)) return `aujourd'hui · ${time}`;
+    const yesterday = new Date(now);
+    yesterday.setDate(yesterday.getDate() - 1);
+    if (isSameDay(d, yesterday)) return `hier · ${time}`;
+    return d.toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' });
+}
+
+// Couleur d'avatar déterministe par adresse : même interlocuteur = même teinte
+function avatarGradient(address) {
+    const s = String(address || '');
+    let h = 0;
+    for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) % 997;
+    return [
+        'from-brand-500 to-indigo-600',
+        'from-emerald-500 to-teal-600',
+        'from-amber-500 to-orange-600',
+        'from-rose-500 to-pink-600',
+        'from-sky-500 to-blue-600',
+        'from-violet-500 to-purple-600'
+    ][h % 6];
+}
+
+function initialsOf(name, address) {
+    const source = String(name || '').trim() || String(address || '').trim();
+    if (!source) return '?';
+    const parts = source.split(/[\s._@-]+/).filter(Boolean);
+    const first = parts[0] ? parts[0][0] : '';
+    const second = parts[1] ? parts[1][0] : (parts[0] && parts[0][1]) || '';
+    return (first + second).toUpperCase() || '?';
+}
+
+let currentMailKind = 'personnel';
+let readerExpanded = false;
+const READER_BODY_LIMIT = 2600; // caractères avant l'invocation « Afficher la suite »
+
+// Corps en PARAGRAPHES réels (séparés par une ligne vide) plutôt qu'un bloc :
+// c'est la transformation qui change le plus la lisibilité mobile.
+function paintReaderBody(mail) {
+    const bodyEl = document.getElementById('reader-body');
+    bodyEl.innerHTML = '';
+    bodyEl.className = `mt-3 break-words select-text leading-relaxed ${currentMailKind === 'newsletter' ? 'text-[13px] text-slate-400' : 'text-sm text-slate-300'}`;
+    const raw = String(mail.text || '');
+    if (!raw.trim()) {
+        bodyEl.textContent = '(Message vide)';
+        return;
+    }
+    const paras = raw.split(/\n\s*\n/).map(p => p.trim()).filter(Boolean);
+    let shown = paras;
+    if (!readerExpanded) {
+        shown = [];
+        let total = 0;
+        for (const p of paras) {
+            if (total > READER_BODY_LIMIT) break;
+            shown.push(p);
+            total += p.length;
+        }
+        if (shown.length === 0) shown = [paras[0].slice(0, READER_BODY_LIMIT)];
+    }
+    for (const p of shown) {
+        const el = document.createElement('p');
+        el.className = 'whitespace-pre-line'; // \n internes gardés (listes, signatures)
+        el.textContent = p; // contenu non fiable : jamais d'innerHTML
+        bodyEl.appendChild(el);
+    }
+    if (!readerExpanded && shown.length < paras.length) {
+        const rest = paras.slice(shown.length).join('\n\n').length;
+        const more = document.createElement('button');
+        more.type = 'button';
+        more.className = 'mt-1 inline-flex items-center gap-1.5 text-[11px] font-bold text-brand-400 bg-brand-500/10 border border-brand-500/20 rounded-lg px-3 py-1.5 active:scale-95 transition';
+        more.innerHTML = `<i class="fa-solid fa-chevron-down"></i><span>Afficher la suite</span>`;
+        more.onclick = expandReaderBody;
+        bodyEl.appendChild(more);
+    }
+}
+
+function expandReaderBody() {
+    if (!currentMail) return;
+    readerExpanded = true;
+    paintReaderBody(currentMail);
+}
+
 function renderMailReader(mail) {
     document.getElementById('reader-subject').textContent = mail.subject;
     const from = mail.from || { name: 'Inconnu', address: '' };
     document.getElementById('reader-from-name').textContent = from.name || from.address || 'Inconnu';
     document.getElementById('reader-from-addr').textContent = from.address || '';
-    document.getElementById('reader-date').textContent = mail.date
-        ? new Date(mail.date).toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })
-        : '';
+    // Avatar à initiales, date relative, puce du type : repères de lecture
+    const avatar = document.getElementById('reader-avatar');
+    if (avatar) {
+        avatar.textContent = initialsOf(from.name, from.address);
+        avatar.className = `w-10 h-10 rounded-full flex items-center justify-center text-[13px] font-extrabold text-white flex-shrink-0 shadow-lg bg-gradient-to-br ${avatarGradient(from.address)}`;
+    }
+    document.getElementById('reader-date').textContent = relativeMailDate(mail.date);
+
+    currentMailKind = classifyMail(mail, from);
+    readerExpanded = false;
+    const kindBox = document.getElementById('reader-kind');
+    kindBox.innerHTML = '';
+    const kind = MAIL_KINDS[currentMailKind];
+    if (kind) {
+        kindBox.classList.remove('hidden');
+        const chip = document.createElement('span');
+        chip.className = `inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold border ${kind.badge}`;
+        chip.innerHTML = `<i class="fa-solid ${kind.icon}"></i><span>${kind.label}</span>`;
+        kindBox.appendChild(chip);
+    } else {
+        kindBox.classList.add('hidden');
+    }
+
     document.getElementById('reader-to').innerHTML = mail.to && mail.to.length
         ? `À : ${escapeHtml(mail.to.map(t => t.name ? `${t.name} <${t.address}>` : t.address).join(', '))}`
         : '';
-    document.getElementById('reader-body').textContent = mail.text || '(Message vide)';
+    paintReaderBody(mail);
 
     const attach = document.getElementById('reader-attachments');
     attach.innerHTML = '';
