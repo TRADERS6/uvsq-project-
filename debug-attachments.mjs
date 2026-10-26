@@ -121,9 +121,9 @@ run('F · imbriqué (alternative + pdf)',
 );
 
 // ---------- Cas d'adresses (retour simpleParser) : messages SANS From ----------
-// Les formes emailType réelles: AddressObject seul { value, html, text },
+// Formes réelles de simpleParser : AddressObject seul { value, html, text },
 // liste de groupes, value vide, ou en-tête absent (spam, autogénérés).
-// Bug visié ici : parsed.from.data n'existe pas → from était TOUJOURS null.
+// Bug visé ici : parsed.from.data n'existe pas → from était TOUJOURS null.
 const runAddresses = (label, parsed, expect) => {
     const got = JSON.stringify(extractMailAddresses(parsed));
     const exp = JSON.stringify(expect);
@@ -137,7 +137,7 @@ const runAddresses = (label, parsed, expect) => {
 };
 const AObj = (...addr) => ({ value: addr, html: '', text: '' });
 
-// G · pas d'en-tête From (nospam / notification interne) → from null, to gardé
+// G · pas d'en-tête From (spam, notification interne) → from null, to gardé
 runAddresses('G · parsed sans From → from null, to conservé',
     { to: AObj({ name: 'Bob', address: 'bob@etu.uvsq.fr' }) },
     { from: null, to: [{ name: 'Bob', address: 'bob@etu.uvsq.fr' }], cc: [] });
@@ -147,12 +147,12 @@ runAddresses('H · From AddressObject classique',
     { from: AObj({ name: 'Prof Martin', address: 'martin@uvsq.fr' }), to: AObj({ name: '', address: 'etu@etu.uvsq.fr' }), cc: null },
     { from: { name: 'Prof Martin', address: 'martin@uvsq.fr' }, to: [{ name: '', address: 'etu@etu.uvsq.fr' }], cc: [] });
 
-// I · to/cc en LISTE de groupes (adresses par groupe) : flaturation nécessaire
+// I · to/cc en LISTE de groupes (un AddressObject par groupe) : aplatissement nécessaire
 runAddresses('I · to/cc listes de groupes',
     { from: AObj({ name: '', address: 'sec@etu.uvsq.fr' }), to: [AObj({ name: 'A', address: 'a@x.fr' }), AObj({ name: 'B', address: 'b@x.fr' })], cc: [AObj({ name: 'C', address: 'c@x.fr' })] },
     { from: { name: '', address: 'sec@etu.uvsq.fr' }, to: [{ name: 'A', address: 'a@x.fr' }, { name: 'B', address: 'b@x.fr' }], cc: [{ name: 'C', address: 'c@x.fr' }] });
 
-// J · AddressObject APRES dégâts : value vide ou from null littéral
+// J · AddressObject abîmé : value vide ou champ absent
 runAddresses('J · from/to vides ou null',
     { from: AObj(), to: null, cc: AObj() },
     { from: null, to: [], cc: [] });

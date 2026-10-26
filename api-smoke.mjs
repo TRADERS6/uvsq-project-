@@ -76,7 +76,7 @@ await expect('mail POST move target=bogus → 400 bad_request',
 await expect('mail POST archive depuis archive → 400 validation',
     mailHandler({ method: 'POST', headers: CREDS, body: { action: 'archive', uid: 1, folder: 'archive' } }, makeRes()), 400, 'validation');
 // Garde-fou (uid, dossier) : un déplacement SOURCE == DESTINATION ferait un
-// couple incohérent (le mail sév open du dossier précédent) → 400 validation
+// couple incohérent (mail encore ouvert depuis le dossier précédent) → 400 validation
 await expect('mail POST move target==folder → 400 validation',
     mailHandler({ method: 'POST', headers: CREDS, body: { action: 'move', uid: 1, folder: 'inbox', target: 'inbox' } }, makeRes()), 400, 'validation');
 // un déplacement DEPUIS un dossier non whitelisté → 400 bad_request

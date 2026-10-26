@@ -49,7 +49,7 @@ source de confusion.
 
 ## 4. Ton propre domaine (remplace uvsq-project.vercel.app)
 
-Le nom de domaine s'achète (les hébergement reste gratuit chez Vercel) :
+Le nom de domaine s'achète (l'hébergement reste gratuit chez Vercel) :
 
 1. **Achat** (~8–12 €/an) :
    - **OVH** (registrar français, `.fr` facile, interface en français) — recommandé

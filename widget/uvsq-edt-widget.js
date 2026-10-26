@@ -1,6 +1,6 @@
 /**
  * UVSQ EDT — Widget iOS via Scriptable.
- *Affichage : prochain cours (compte à rebours / en cours) + séances du jour.
+ * Affichage : prochain cours (compte à rebours / en cours) + séances du jour.
  * Configuration OBLIGATOIRE ci-dessous : URL de l'app déployée, n° étudiant,
  * identifiant ENT et mot de passe (identiques à ceux de la PWA).
  */
