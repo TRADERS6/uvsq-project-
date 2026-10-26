@@ -5,6 +5,7 @@
 // est suivi de LINECOUNT avant les extensions.
 import { parseBodystructure } from './node_modules/imapflow/dist/esm/tools.js';
 import { collectAttachmentParts, extractMailAddresses } from './lib/mail.js';
+import { simpleParser } from 'mailparser';
 
 const A = (v) => ({ type: 'ATOM', value: v });
 const S = (v) => ({ type: 'STRING', value: v });
@@ -155,6 +156,36 @@ runAddresses('I · to/cc listes de groupes',
 runAddresses('J · from/to vides ou null',
     { from: AObj(), to: null, cc: AObj() },
     { from: null, to: [], cc: [] });
+
+// K & L · From encodé RFC 2047, au travers du VRAI simpleParser (pas simulé) :
+// un expéditeur « Mélanie Toussaint » arrive en =?UTF-8?B?…?= dans le header ;
+// mailparser le décode, extractMailAddresses doit le laisser passer en clair.
+const runRaw = async (label, raw, expect) => {
+    try {
+        const parsed = await simpleParser(raw);
+        const got = JSON.stringify(extractMailAddresses(parsed).from);
+        const exp = JSON.stringify(expect);
+        if (got === exp) {
+            console.log(`PASS ${label} → from=${expect.address} (${expect.name})`);
+            pass++;
+        } else {
+            console.log(`FAIL ${label}\n  attendu: ${exp}\n  obtenu : ${got}`);
+            fail++;
+        }
+    } catch (e) {
+        console.log(`FAIL ${label} : simpleParser a levé : ${e.message}`);
+        fail++;
+    }
+};
+
+const melanieH64 = Buffer.from('Mélanie Toussaint').toString('base64');
+await runRaw('K · From RFC 2047 encodage B « Mélanie Toussaint »',
+    Buffer.from(`From: =?UTF-8?B?${melanieH64}?= <m.toussaint@uvsq.fr>\r\nSubject: x\r\n\r\nBonjour\r\n`),
+    { name: 'Mélanie Toussaint', address: 'm.toussaint@uvsq.fr' });
+
+await runRaw('L · From RFC 2047 encodage Q « Jean-Luc Été »',
+    Buffer.from(`From: =?UTF-8?Q?Jean-Luc_=C3=89t=C3=A9?= <jl.ete@uvsq.fr>\r\nSubject: x\r\n\r\nCordialement\r\n`),
+    { name: 'Jean-Luc Été', address: 'jl.ete@uvsq.fr' });
 
 console.log(`\nRésultat : ${pass} pass, ${fail} fail`);
 process.exit(fail > 0 ? 1 : 0);
