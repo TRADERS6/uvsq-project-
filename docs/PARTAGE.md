@@ -20,6 +20,7 @@ https://uvsq-project.vercel.app
   - **iOS** : Partager ➜ « Sur l'écran d'accueil » (l'app propose un bandeau)
   - **Android** : le navigateur propose l'installation automatiquement
   - **Widget iOS** (prochain cours sur l'écran d'accueil) : voir `widget/README.md`
+- L'app a aussi un **onglet Messagerie** : lire et répondre à ses mails Partage, télécharger les pièces jointes (fichiers jusqu'à ~3 Mo, au-delà le webmail UVSQ reste la voie), archiver façon Gmail, supprimer dans la corbeille — chacun n'accède qu'à sa propre boîte avec ses propres identifiants.
 
 ## 2. Message prêt à copier dans le groupe de classe
 
@@ -31,6 +32,7 @@ Ouvrez le lien ➜ entrez votre numéro étudiant (+ vos identifiants ENT si
 demandé). Vos infos restent sur VOTRE téléphone, rien n'est conservé sur
 un serveur. Installable comme une vraie app (Sur l'écran d'accueil), et
 ça marche même sans réseau (dernier EDT gardé en cache).
+Messagerie UVSQ incluse (lire, répondre, archiver, pièces jointes).
 Widget iPhone dispo aussi : https://uvsq-project.vercel.app  ➜ voir "Widget" dans les réglages
 ```
 

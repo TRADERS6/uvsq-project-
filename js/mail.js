@@ -47,6 +47,11 @@ function renderFolderChips() {
 
 function selectFolder(id) {
     if (id === currentFolder || !folderAvailability.includes(id)) return;
+    // Le lecteur doit fermer : currentMail portait l'UID de l'ANCIEN dossier.
+    // Le garder ouvert au changement de dossier ferait partir une action
+    // (suppression, pièce jointe) avec un (uid, dossier) incohérent — jusqu'à
+    // toucher un autre mail qui porterait le même UID dans le nouveau dossier.
+    closeMailReader();
     currentFolder = id;
     const cache = loadMailCache();
     mailData = cache && Array.isArray(cache.mails) ? cache.mails : [];
