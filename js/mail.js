@@ -16,13 +16,15 @@ const FOLDER_LABELS = {
     inbox: 'Boîte de réception',
     sent: 'Envoyés',
     junk: 'Spam',
-    trash: 'Corbeille'
+    trash: 'Corbeille',
+    archive: 'Archives'
 };
 const FOLDER_ICONS = {
     inbox: 'fa-inbox',
     sent: 'fa-paper-plane',
     junk: 'fa-ban',
-    trash: 'fa-trash-can'
+    trash: 'fa-trash-can',
+    archive: 'fa-box-archive'
 };
 
 function renderFolderChips() {
@@ -417,7 +419,7 @@ async function runMutation(action, target) {
         const res = await fetch('/api/mail', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'x-mail-user': c.user, 'x-mail-pass': c.pass },
-            body: JSON.stringify(action === 'delete' ? { action, uid, folder: currentFolder } : { action, uid, folder: currentFolder, target })
+            body: JSON.stringify({ action, uid, folder: currentFolder, ...(target ? { target } : {}) })
         });
         const data = await res.json().catch(() => ({}));
         if (!res.ok || !data.success) {
@@ -440,6 +442,13 @@ function deleteCurrentMail() {
 
 function moveCurrentMail(targetFolder) {
     return runMutation('move', targetFolder);
+}
+
+// Archivage façon Google : le mail quitte la réception sans passer par la
+// corbeille, consultable ensuite dans le dossier « Archives » (puce) ou via
+// le webmail. Le dossier est créé par le serveur au premier archivage.
+function archiveCurrentMail() {
+    return runMutation('archive', 'archive');
 }
 
 // ---------- rédaction ----------

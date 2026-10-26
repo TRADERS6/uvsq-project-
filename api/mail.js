@@ -7,14 +7,14 @@
 //
 // Durcissement : même CORS optionnel (ALLOWED_ORIGIN) et même rate-limit
 // (RATE_LIMIT_BURST / RATE_LIMIT_PER_SEC) que /api/edt, compteur séparé « mail: ».
-import { listRecentMails, getMail, sendMessage, deleteMail, moveMail } from '../lib/mail.js';
+import { listRecentMails, getMail, sendMessage, deleteMail, moveMail, archiveMail } from '../lib/mail.js';
 import { rateLimit } from '../lib/rate-limit.js';
 
 const allowedOrigin = () => process.env.ALLOWED_ORIGIN || '';
 
 // Dossiers IMAP acceptés côté front : inbox toujours, sent/junk/trash selon
 // la découverte sur le compte (noms réels résolus dans lib/mail.js)
-const FOLDER_WHITELIST = ['inbox', 'sent', 'junk', 'trash'];
+const FOLDER_WHITELIST = ['inbox', 'sent', 'junk', 'trash', 'archive'];
 
 function setCors(res) {
     const origin = allowedOrigin();
@@ -141,16 +141,18 @@ export default async function handler(req, res) {
             return res.status(400).json({ success: false, error: 'bad_request', message: 'Corps de requête JSON invalide.' });
         }
 
-        // ------ action sur un mail existant : supprimer / déplacer ------
-        if (body.action === 'delete' || body.action === 'move') {
+        // ------ action sur un mail existant : supprimer / déplacer / archiver ------
+        if (body.action === 'delete' || body.action === 'move' || body.action === 'archive') {
             const folder = String(body.folder || 'inbox').toLowerCase();
             const target = String(body.target || 'trash').toLowerCase();
             if (!FOLDER_WHITELIST.includes(folder) || (body.action === 'move' && !FOLDER_WHITELIST.includes(target))) {
-                return res.status(400).json({ success: false, error: 'bad_request', message: 'Dossier inconnu : inbox, sent, junk ou trash.' });
+                return res.status(400).json({ success: false, error: 'bad_request', message: 'Dossier inconnu : inbox, sent, junk, trash ou archive.' });
             }
             const r = body.action === 'delete'
                 ? await deleteMail(user, pass, body.uid, folder)
-                : await moveMail(user, pass, body.uid, folder, target);
+                : body.action === 'archive'
+                    ? await archiveMail(user, pass, body.uid, folder)
+                    : await moveMail(user, pass, body.uid, folder, target);
             return res.status(200).json({
                 success: true,
                 source: 'partage_imap',
@@ -159,7 +161,9 @@ export default async function handler(req, res) {
                 where: r.where,
                 message: body.action === 'delete'
                     ? 'Mail déplacé dans la corbeille Partage.'
-                    : `Mail déplacé vers « ${target} ».`
+                    : body.action === 'archive'
+                        ? 'Mail archivé (dossier « Archives »).'
+                        : `Mail déplacé vers « ${target} ».`
             });
         }
 
