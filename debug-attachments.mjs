@@ -4,7 +4,7 @@
 // puis extensions : MD5, DISPOSITION, LANGUE, LOCATION. Pour text/* : SIZE
 // est suivi de LINECOUNT avant les extensions.
 import { parseBodystructure } from './node_modules/imapflow/dist/esm/tools.js';
-import { collectAttachmentParts, extractMailAddresses, parseWithCharsetRepair, decodePreviewBytes, htmlToText, findTextPart } from './lib/mail.js';
+import { collectAttachmentParts, extractMailAddresses, parseWithCharsetRepair, decodePreviewBytes, htmlToText, findTextPart, repairSubject } from './lib/mail.js';
 import { simpleParser } from 'mailparser';
 
 const A = (v) => ({ type: 'ATOM', value: v });
@@ -218,6 +218,43 @@ await runMojibake('M · corps Windows-1252 déclaré utf-8 → réparation',
 
 await runMojibake('N · corps Windows-1252 déclaré us-ascii → réparation',
     Buffer.concat([Buffer.from('From: notifs@uvsq.fr\r\nContent-Type: text/plain; charset=us-ascii\r\n\r\n', 'latin1'), bodyCp1252]));
+
+// ---------- V, W · sujet : encoded-word mensonger (label utf-8, octets 1252) ----------
+// Le SUJET du notificateur se déclare =?utf-8?B/Q?…? alors que ses octets
+// sont Windows-1252 (Exchange/Outlook) : révélé par le test direct mailparser
+// → 3 « � » dans Me sujet, dans les DEUX encodages. La réparation relABELle
+// l'encoded-word (=?windows-1252?) AVANT le second parse.
+const runSubjectRepair = async (label, raw) => {
+    try {
+        const broken = await simpleParser(raw);
+        const wasBroken = (broken.subject || '').includes('\uFFFD');
+        const fixed = await repairSubject(raw);
+        const ok = wasBroken && !fixed.includes('\uFFFD') && fixed.includes("l'événement modifi");
+        if (ok) {
+            console.log(`PASS ${label} → « ${fixed} »`);
+            pass++;
+        } else {
+            console.log(`FAIL ${label}\n  sujet abîmé au départ : ${wasBroken}\n  réparé : ${JSON.stringify(fixed)}`);
+            fail++;
+        }
+    } catch (e) {
+        console.log(`FAIL ${label} : ${e.message}`);
+        fail++;
+    }
+};
+
+const subjectBytes = Buffer.from("Les heures de l'événement modifiées", 'latin1');
+const qEncode = (bytes) => [...bytes].map(b => {
+    const c = String.fromCharCode(b);
+    if (b >= 33 && b <= 126 && c !== '=' && c !== '?') return c;
+    return '=' + b.toString(16).toUpperCase().padStart(2, '0');
+}).join('');
+
+await runSubjectRepair('V · sujet encoded-word utf-8 ?, mensonger (B) → réparation',
+    Buffer.from(`From: notifs@uvsq.fr\r\nSubject: =?utf-8?B?${subjectBytes.toString('base64')}?=\r\n\r\nx\r\n`));
+
+await runSubjectRepair('W · sujet encoded-word utf-8 ?, mensonger (Q) → réparation',
+    Buffer.from(`From: notifs@uvsq.fr\r\nSubject: =?utf-8?Q?${qEncode(subjectBytes)}?=\r\n\r\nx\r\n`));
 
 // ---------- O, P, Q · aperçu des listes : decodePreviewBytes ----------
 // buildPreview ne passe pas par simpleParser : les octets du part texte y sont
