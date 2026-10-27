@@ -219,6 +219,27 @@ await runMojibake('M · corps Windows-1252 déclaré utf-8 → réparation',
 await runMojibake('N · corps Windows-1252 déclaré us-ascii → réparation',
     Buffer.concat([Buffer.from('From: notifs@uvsq.fr\r\nContent-Type: text/plain; charset=us-ascii\r\n\r\n', 'latin1'), bodyCp1252]));
 
+await runMojibake('X · corps 1252 SANS charset déclaré → injection',
+    Buffer.concat([Buffer.from('From: notifs@uvsq.fr\r\nContent-Type: text/plain\r\n\r\n', 'latin1'), bodyCp1252]));
+
+await runMojibake('Y · corps 1252 label unknown-8bit → relabel',
+    Buffer.concat([Buffer.from('From: notifs@uvsq.fr\r\nContent-Type: text/plain; charset=unknown-8bit\r\n\r\n', 'latin1'), bodyCp1252]));
+
+await runMojibake('Z · corps 1252 label x-unknown → relabel',
+    Buffer.concat([Buffer.from('From: notifs@uvsq.fr\r\nContent-Type: text/plain; charset=x-unknown\r\n\r\n', 'latin1'), bodyCp1252]));
+
+// Régression : un charset HONNÊTE ne doit jamais être relabel (aucun mensonge
+// détecté → parseWithCharsetRepair retourne null, le corps reste intact)
+{
+    const honest = Buffer.concat([Buffer.from('From: p@uvsq.fr\r\nContent-Type: text/plain; charset=iso-8859-1\r\n\r\n', 'latin1'), bodyCp1252]);
+    const rep = await parseWithCharsetRepair(honest);
+    // iso-8859-1 est connue : rien à relabeler... MAIS les octets 0xE9 sont dans
+    // une étiquette honnête : le parse ne produit pas de « � » ; la réparation
+    // ne doit PAS être retenue par getMail (mojibakeCount non strictement inférieur).
+    if (rep === null && bodyCp1252.toString('latin1').includes("l'événement")) { console.log('PASS AA · charset honnête iso-8859-1 → réparation non déclenchée'); pass++; }
+    else { console.log(`FAIL AA · réparation inopportune : ${rep ? 'parse retourné' : 'null'}`); fail++; }
+}
+
 // ---------- V, W · sujet : encoded-word mensonger (label utf-8, octets 1252) ----------
 // Le SUJET du notificateur se déclare =?utf-8?B/Q?…? alors que ses octets
 // sont Windows-1252 (Exchange/Outlook) : révélé par le test direct mailparser
