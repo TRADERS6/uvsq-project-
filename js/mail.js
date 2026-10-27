@@ -408,7 +408,18 @@ function initialsOf(name, address) {
 
 let currentMailKind = 'personnel';
 let readerExpanded = false;
-const READER_BODY_LIMIT = 2600; // caractères avant l'invocation « Afficher la suite »
+
+// Seuil « Afficher la suite » adaptatif : ~2 écrans de texte selon la taille
+// réelle (largeur → caractères par ligne ; hauteur utile → lignes), avec un
+// plancher à 3 200 caractères pour ne jamais couper trop court sur mobile.
+// (390×844 → ~3 200 ; desktop 1440×900 → ~12 000 : la coupe y est invisible.)
+function readerBodyLimit() {
+    const width = (typeof window !== 'undefined' && window.innerWidth) || 390;
+    const height = (typeof window !== 'undefined' && window.innerHeight) || 844;
+    const charsPerLine = Math.floor(width / 8);       // ~8 px par caractère (14 px)
+    const linesPerScreen = Math.floor((height - 240) / 20); // en-tête + actions en moins
+    return Math.max(3200, charsPerLine * linesPerScreen * 2);
+}
 
 // Corps en PARAGRAPHES réels (séparés par une ligne vide) plutôt qu'un bloc :
 // c'est la transformation qui change le plus la lisibilité mobile.
@@ -423,15 +434,16 @@ function paintReaderBody(mail) {
     }
     const paras = raw.split(/\n\s*\n/).map(p => p.trim()).filter(Boolean);
     let shown = paras;
+    const limit = readerBodyLimit();
     if (!readerExpanded) {
         shown = [];
         let total = 0;
         for (const p of paras) {
-            if (total > READER_BODY_LIMIT) break;
+            if (total > limit) break;
             shown.push(p);
             total += p.length;
         }
-        if (shown.length === 0) shown = [paras[0].slice(0, READER_BODY_LIMIT)];
+        if (shown.length === 0) shown = [paras[0].slice(0, limit)];
     }
     for (const p of shown) {
         const el = document.createElement('p');
