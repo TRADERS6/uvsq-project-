@@ -14,13 +14,18 @@ const user = process.env.MAIL_USER || '';
 const pass = process.env.MAIL_PASS || '';
 
 if (!user || !pass) {
-    console.error('Usage : MAIL_USER="..." MAIL_PASS="..." node scripts/verify-previews.mjs\n(ton mot de passe ne quitte pas ta machine : il part uniquement, chiffré HTTPS, vers ta propre API.)');
+    console.error('Usage : MAIL_USER="..." MAIL_PASS="..." node scripts/verify-previews.mjs [--all] [--reader]');
+console.error('  --all : les quatre dossiers · --reader : ouvre aussi chaque mail (compte les « � » du corps)');
+console.error('  (ton mot de passe ne quitte pas ta machine : il part uniquement, chiffré HTTPS, vers ta propre API.)');
     process.exit(2);
 }
 
 const folders = process.argv.includes('--all')
     ? ['inbox', 'sent', 'junk', 'trash']
     : ['inbox'];
+// --reader : ouvre aussi chaque mail comme le fait le lecteur
+// (?uid=) — le corps SUIVI de près, pas seulement l'aperçu de liste.
+const readBodies = process.argv.includes('--reader');
 
 const fffd = (s) => (String(s).match(/\uFFFD/g) || []).length;
 
@@ -47,6 +52,27 @@ for (const folder of folders) {
         if (previewFffd > 0) {
             issues++;
             console.log(`    FAIL : ${previewFffd} caractère(s) « � » dans l'aperçu`);
+        }
+
+        if (readBodies) {
+            const r = await fetch(`${BASE}/api/mail?uid=${m.uid}&folder=${folder}`, {
+                headers: { 'x-mail-user': user, 'x-mail-pass': pass, 'x-real-ip': 'verify-previews' }
+            });
+            if (r.status !== 200) {
+                console.log(`    lecteur → HTTP ${r.status}`);
+                issues++;
+            } else {
+                const { mail } = await r.json();
+                const body = String((mail && mail.text) || '');
+                const fffdBody = fffd(body);
+                const fffdSubject = fffd(String((mail && mail.subject) || ''));
+                console.log(`    lecteur uid=${m.uid} · body FFFD=${fffdBody} · sujet FFFD=${fffdSubject}`);
+                console.log(`      début du corps : ${JSON.stringify(body.slice(0, 160))}`);
+                if (fffdBody > 0 || fffdSubject > 0) {
+                    issues++;
+                    console.log(`      FAIL : ${fffdBody + fffdSubject} « � » à la LECTURE — forme d'octets non couverte, à rapporter telle quelle`);
+                }
+            }
         }
     }
 }
