@@ -59,14 +59,38 @@ Un vrai widget d'écran d'accueil iOS via l'app gratuite **Scriptable** :
 - 📮 **Connecté = Messagerie en premier onglet** : dès que tes identifiants existent dans l'app, elle s'ouvre directement sur la messagerie (l'EDT se charge en tâche de fond, toujours accessible en bas).
 - 🔎 **EDT toujours neutre** : en cas d'échec de l'API, la vue affiche « Aucun cours prévu » comme un jour libre — plus de bandeau rouge d'erreur (la trace reste visible dans la console via F12).
 - 🧭 **Connexion simplifiée** : entre ton numéro étudiant seul, l'app essaie automatiquement les formats d'adresse UVSQ (ex. `numero@etu.uvsq.fr`). Si le serveur n'en accepte aucun, elle te dit précisément d'utiliser ton adresse mail complète. Le format gagnant est mémorisé : plus jamais à le ressaisir.
-- - 📖 **Lecteur qui s'adapte au mail** : les publipostages sont marqués « Newsletter », les confirmations de service « UVSQ », les invitations en calendrier « Invitation » — un long mail se coupe en « Afficher la suite » et le corps est mis en paragraphes réels pour la lecture au pouce. Avatar coloré à initiales et date relative (« aujourd'hui · 14:32 ») en bonus.
+- 📖 **Lecteur qui s'adapte au mail** : les publipostages sont marqués « Newsletter », les confirmations de service « UVSQ », les invitations en calendrier « Invitation » — le corps est mis en paragraphes réels pour la lecture au pouce. Un long mail se coupe après ~2 écrans : le bouton « Afficher les mails longs en entier » mémorise ton choix (plus rien n'est coupé ensuite, « Ré-couper » inverse). Avatar coloré à initiales et date relative (« aujourd'hui · 14:32 »).
 - 🖥️ **Bouton « Enregistrer » réparé sur PC** : sur certains navigateurs (Firefox/Safari variants), la demande de permission de notification bloquait la sauvegarde — c'est corrigé, la sauvegarde se fait toujours en premier.
 - 📬 **Serveurs Partage officiels** : connexion désormais pointée vers `partage.uvsq.fr` (IMAP port 993, SMTP port 465) selon la doc UVSQ — cause du « impossible de récupérer les emails » corrigée.
 - 📂 **Dossiers IMAP complets** : la messagerie ne se limite plus à la réception — sélecteur de dossiers (Boîte de réception / Envoyés / Spam / Corbeille) alimenté par la découverte automatique des dossiers réels du compte Partage (attributs spéciaux IMAP \Sent, \Junk, \Trash, repli par nom). Les envois de l'app déposent leur copie dans « Envoyés » (best-effort), le uid de chaque mail est désormais résolu dans son propre dossier, les caches hors-ligne sont séparés par dossier et purgés à la déconnexion.
-- 📎 **Pièces jointes téléchargeables** : dans le lecteur, chaque pièce jointe est une puce cliquable avec sa taille — le fichier est téléchargé sur ton appareil. La détection couvre les trois habitudes des serveurs (disposition « attachment », inline avec nom, nom seul sur part non-texte) et un harnais de régression (`debug-attachments.mjs`) valide 6 cas de structure MIME contre le parser réel. Limite technique honnête : jusqu'à ~3 Mo via l'app ; au-delà, l'invite indique le webmail Partage.
+- 📎 **Pièces jointes téléchargeables** : dans le lecteur, chaque pièce jointe est une puce cliquable avec sa taille — le fichier est téléchargé sur ton appareil. La détection couvre les trois habitudes des serveurs (disposition « attachment », inline avec nom, nom seul sur part non-texte) et un harnais de régression (`debug-attachments.mjs`) valide 12 cas (structures MIME, adresses sans From, RFC 2047) contre les parsers réels. Limite technique honnête : jusqu'à ~3 Mo via l'app ; au-delà, l'invite indique le webmail Partage.
 - 🧰 **Quatre actions dans le lecteur** : « Répondre » (rédacteur pré-rempli), « Archiver » (façon Gmail : le mail quitte la réception sans passer par la corbeille — le dossier « Archives » est créé automatiquement au premier archivage et devient une puce du sélecteur), « Déplacer vers… » (menu avec les autres dossiers du compte) et « Supprimer » (le mail part automatiquement dans la corbeille Partage — jamais de suppression définitive ni de vidage de corbeille depuis l'app). Chaque action est validée par le serveur et met à jour la liste et le cache hors-ligne instantanément.
 - 📔 **Noms des profs proposés automatiquement** : quand tu écris un mail, tape les premières lettres du nom et l'app propose l'adresse — carnet alimenté par tes mails reçus et les profs de ton emploi du temps (celles déduites de l'EDT sont marquées « adresse déduite, à vérifier »).
 - 🔔 **L'alerte « cours imminent » fonctionne vraiment** : elle était appelée par le minuteur mais jamais définie dans le code (rien ne s'envoyait jamais) — la notification est désormais en place, une seule fois par cours.
+
+## 📋 Changelog détaillé — la série messagerie (octobre 2026)
+
+*(État vérifié : tous ces commits sont déjà sur `origin/main` — rien n'attend de `git push`. Les harnais cités se rejouent avec `node front-smoke.mjs`, `node api-smoke.mjs`, `node debug-attachments.mjs`.)*
+
+**Fonctionnalités messagerie**
+- `1ce6b0f` · dossiers Partage complets (réception, envoyés, spam, corbeille), alimentés par la découverte IMAP automatique, caches séparés par dossier
+- `2b1e445` · archivage façon Gmail, dossier « Archives » créé automatiquement au premier clic
+- `33f5082` · pièces jointes téléchargeables (numéro de part MIME réel, conversion base64 → Blob)
+- `501bc5a` · lecteur adapté au type : avatars à initiales, date relative, badges Invitation/Newsletter/Service UVSQ, corps en paragraphes
+- `5d5439f` · choix « Afficher les mails longs en entier » mémorisé (préférence locale, « Ré-couper » pour revenir)
+
+**Corrections de fond**
+- `8bdcb22` · **expéditeur toujours « Inconnu » dans le lecteur** : `parsed.from.data` n'existe pas chez mailparser — adresse réparée, incluant les listes de groupes
+- `89939d9` · lecteur fermé au changement de dossier (un mail ouvert portait l'UID de l'ancien dossier — jusqu'à pouvoir toucher un autre mail) + session CELCAT périmée retournée en login frais au lieu d'un faux « identifiants refusés »
+- `9c3bcfa` · garde de méthodes manquante sur `/api/edt` : PUT/DELETE passaient au-delà des validations
+- `684f334` · détection des pièces jointes robuste aux trois variations Partage (disposition, inline avec nom, nom seul sur part non-texte)
+- `ffeee74` · seuil « Afficher la suite » adaptatif (~2 écrans par appareil, plancher 3 200 caractères, coupe invisible sur desktop)
+- `dae2fce` · ménage des formules maladroites glissées dans harnais et docs
+
+**Harnais de régression (conservés et rejouables)**
+- `f8b9edd` · `front-smoke.mjs` — cohérence statique HTML/JS + 8 cas de classification du lecteur (`1fa293a`)
+- `9c3bcfa` · `api-smoke.mjs` — 20 cas de contrat API sans réseau
+- `684f334` · `debug-attachments.mjs` — 6 structures MIME contre le vrai parser imapflow (`f138cf8`, `89ee4a7` : + cas adresses sans From et RFC 2047 B/Q)
 
 ## 🔐 Confidentialité
 
