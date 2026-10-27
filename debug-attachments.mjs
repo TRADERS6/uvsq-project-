@@ -4,7 +4,7 @@
 // puis extensions : MD5, DISPOSITION, LANGUE, LOCATION. Pour text/* : SIZE
 // est suivi de LINECOUNT avant les extensions.
 import { parseBodystructure } from './node_modules/imapflow/dist/esm/tools.js';
-import { collectAttachmentParts, extractMailAddresses } from './lib/mail.js';
+import { collectAttachmentParts, extractMailAddresses, parseWithCharsetRepair } from './lib/mail.js';
 import { simpleParser } from 'mailparser';
 
 const A = (v) => ({ type: 'ATOM', value: v });
@@ -186,6 +186,38 @@ await runRaw('K · From RFC 2047 encodage B « Mélanie Toussaint »',
 await runRaw('L · From RFC 2047 encodage Q « Jean-Luc Été »',
     Buffer.from(`From: =?UTF-8?Q?Jean-Luc_=C3=89t=C3=A9?= <jl.ete@uvsq.fr>\r\nSubject: x\r\n\r\nCordialement\r\n`),
     { name: 'Jean-Luc Été', address: 'jl.ete@uvsq.fr' });
+
+// M & N · mojibake : corps Windows-1252 (é = 0xE9 sur un octet) déclaré utf-8
+// ou us-ascii — classique des notificateurs automatiques : simpleParser produit
+// des « � » ; parseWithCharsetRepair doit rendre les accents en clair.
+const runMojibake = async (label, raw) => {
+    try {
+        const broken = await simpleParser(raw);
+        const brokenText = broken.text || '';
+        const hasReplace = /[\uFFFD]/.test(brokenText);
+        const repaired = await parseWithCharsetRepair(raw);
+        const repairedText = (repaired && repaired.text) || '';
+        const ok = hasReplace && !/[\uFFFD]/.test(repairedText) && /modifi\S+ de 08:30/.test(repairedText);
+        if (ok) {
+            console.log(`PASS ${label} → « ${repairedText.trim().slice(0, 60)}… »`);
+            pass++;
+        } else {
+            console.log(`FAIL ${label}\n  mojibake initial présent : ${hasReplace}\n  réparé : ${JSON.stringify(repairedText.slice(0, 80))}`);
+            fail++;
+        }
+    } catch (e) {
+        console.log(`FAIL ${label} : ${e.message}`);
+        fail++;
+    }
+};
+
+// Corps en octets Latin-1 (é sur un octet), étiquette mensongère utf-8
+const bodyCp1252 = Buffer.from("Les heures de l\'\u00e9v\u00e9nement ont \u00e9t\u00e9 modifi\u00e9es de 08:30-10:30 \u00e0 10:30-12:30", 'latin1');
+await runMojibake('M · corps Windows-1252 déclaré utf-8 → réparation',
+    Buffer.concat([Buffer.from('From: notifs@uvsq.fr\r\nContent-Type: text/plain; charset=utf-8\r\n\r\n', 'latin1'), bodyCp1252]));
+
+await runMojibake('N · corps Windows-1252 déclaré us-ascii → réparation',
+    Buffer.concat([Buffer.from('From: notifs@uvsq.fr\r\nContent-Type: text/plain; charset=us-ascii\r\n\r\n', 'latin1'), bodyCp1252]));
 
 console.log(`\nRésultat : ${pass} pass, ${fail} fail`);
 process.exit(fail > 0 ? 1 : 0);
