@@ -1,4 +1,5 @@
 {
+  "installCommand": "env -u npm_config_cache_dir -u NPM_CONFIG_CACHE_DIR npm install",
   "functions": {
     "api/edt.js": {
       "regions": ["cdg1"]
