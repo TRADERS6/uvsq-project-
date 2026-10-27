@@ -409,6 +409,17 @@ function initialsOf(name, address) {
 let currentMailKind = 'personnel';
 let readerExpanded = false;
 
+// Choix « Afficher la suite » mémorisé : un clic déroule LE mail courant
+// ET partagent tous les prochains — plus rien n'est coupé ensuite. Un bouton
+// « Replier » permet de revenir à la coupure (revers symétrique).
+const EXPAND_PREF_KEY = 'uvsq_mail_expand_all';
+let readerExpandAll = false;
+try { readerExpandAll = localStorage.getItem(EXPAND_PREF_KEY) === '1'; } catch (e) { /* stockage indisponible : coupure par défaut */ }
+function markExpandAll(v) {
+    readerExpandAll = !!v;
+    try { localStorage.setItem(EXPAND_PREF_KEY, readerExpandAll ? '1' : '0'); } catch (e) { /* non bloquant */ }
+}
+
 // Seuil « Afficher la suite » adaptatif : ~2 écrans de texte selon la taille
 // réelle (largeur → caractères par ligne ; hauteur utile → lignes), avec un
 // plancher à 3 200 caractères pour ne jamais couper trop court sur mobile.
@@ -435,7 +446,8 @@ function paintReaderBody(mail) {
     const paras = raw.split(/\n\s*\n/).map(p => p.trim()).filter(Boolean);
     let shown = paras;
     const limit = readerBodyLimit();
-    if (!readerExpanded) {
+    const unfolded = readerExpanded || readerExpandAll;
+    if (!unfolded) {
         shown = [];
         let total = 0;
         for (const p of paras) {
@@ -451,21 +463,30 @@ function paintReaderBody(mail) {
         el.textContent = p; // contenu non fiable : jamais d'innerHTML
         bodyEl.appendChild(el);
     }
-    if (!readerExpanded && shown.length < paras.length) {
-        const rest = paras.slice(shown.length).join('\n\n').length;
+    const isLong = raw.length > limit;
+    if (!unfolded && shown.length < paras.length) {
+        // Un clic = dérouler CE mail et TOUS les prochains (choix mémoirisé)
         const more = document.createElement('button');
         more.type = 'button';
         more.className = 'mt-1 inline-flex items-center gap-1.5 text-[11px] font-bold text-brand-400 bg-brand-500/10 border border-brand-500/20 rounded-lg px-3 py-1.5 active:scale-95 transition';
-        more.innerHTML = `<i class="fa-solid fa-chevron-down"></i><span>Afficher la suite</span>`;
+        more.innerHTML = `<i class="fa-solid fa-chevron-down"></i><span>Afficher les mails longs en entier</span>`;
         more.onclick = expandReaderBody;
         bodyEl.appendChild(more);
+    } else if (unfolded && isLong && readerExpandAll) {
+        // Revers symétrique : si le choix « toujours déroulé » gêne, un clic rend la coupe
+        const less = document.createElement('button');
+        less.type = 'button';
+        less.className = 'mt-1 inline-flex items-center gap-1.5 text-[11px] font-medium text-slate-400 bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 active:scale-95 transition';
+        less.innerHTML = `<i class="fa-solid fa-chevron-up"></i><span>Ré-couper les mails longs</span>`;
+        less.onclick = () => { markExpandAll(false); renderMailReader(currentMail); };
+        bodyEl.appendChild(less);
     }
 }
 
 function expandReaderBody() {
     if (!currentMail) return;
-    readerExpanded = true;
-    paintReaderBody(currentMail);
+    markExpandAll(true); // choix définitif : tous les mails longs, déroulés
+    renderMailReader(currentMail);
 }
 
 function renderMailReader(mail) {

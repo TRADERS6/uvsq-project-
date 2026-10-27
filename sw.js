@@ -4,7 +4,7 @@
 //   (cache localStorage des cours) et ses messages d'erreur
 // - CDN (Tailwind, FontAwesome) : stale-while-revalidate pour garder le style
 //   et les icônes disponibles hors-ligne après la première visite
-const CACHE_NAME = 'uvsq-edt-v21';
+const CACHE_NAME = 'uvsq-edt-v22';
 const RUNTIME_CACHE = 'uvsq-edt-runtime-v1';
 const RUNTIME_LIMIT = 100;
 
