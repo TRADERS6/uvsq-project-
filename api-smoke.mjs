@@ -122,5 +122,38 @@ await expect('mail POST send sans to → 400 validation',
     delete process.env.ALLOWED_ORIGIN;
 }
 
+// ---------- 7. Audit d'encodage SMTP du sujet répondu (sans réseau) ----------
+// Le front construit « RE: <sujet> » (accents, tirets cadratins…) et l'envoie
+// en JSON UTF-8 ; sendMessage le confie tel quel à nodemailer, qui doit le
+// transporter en RFC 2047 (=?UTF-8?…?=) — jamais d'octet non-ASCII brut dans
+// un en-tête SMTP. streamTransport + buffer : le message est généré octet
+// par octet, identique à ce que le vrai transport confierait, sans réseau.
+{
+    try {
+        const nodemailerMod = await import('nodemailer');
+        const transport = nodemailerMod.default.createTransport({ streamTransport: true, buffer: true });
+        const info = await transport.sendMail({
+            from: 'etu@etu.uvsq.fr',
+            to: 'prof@uvsq.fr',
+            subject: "RE: Les heures de l'événement modifiées — à confirmer",
+            text: 'Réponse envoyée depuis la PWA — à 10h30.'
+        });
+        const raw = info.message.toString('latin1');
+        const head = raw.slice(0, raw.indexOf('\r\n\r\n') > 0 ? raw.indexOf('\r\n\r\n') : undefined);
+        const encoded = /=\?UTF-8\?/i.test(head); // l'objet est bien RFC 2047
+        const rawAccents = /[\u00C0-\u00FF]/.test(head); // octet non-ASCII brut dans l'en-tête = faux
+        const bodyUtf8 = /charset="?utf-8"?/i.test(raw); // le corps part avec un charset explicite
+        const transfer = /Content-Transfer-Encoding:\s*(base64|quoted-printable|8bit)/i.test(raw); // encodé honnêtement
+        const bodyIntact = raw.includes('R=C3=A9ponse') || raw.includes('UmXDqXBvbnNl'); // qp ou base64, pas de texte en clair abîmé
+        if (encoded && !rawAccents && bodyUtf8 && transfer) {
+            console.log(`PASS SMTP sujet RFC 2047 (=?UTF-8?…?=) + corps ${bodyIntact ? 'encodé' : 'utf-8'}`); pass++;
+        } else {
+            console.log(`FAIL audit SMTP charset\n  encoded=${encoded} rawAccents=${rawAccents} bodyUtf8=${bodyUtf8} transfer=${transfer}\n  head=${JSON.stringify(head.slice(0, 200))}`); fail++;
+        }
+    } catch (e) {
+        console.log(`FAIL audit SMTP : ${e.message}`); fail++;
+    }
+}
+
 console.log(`\nRésultat : ${pass} pass, ${fail} fail`);
 process.exit(fail > 0 ? 1 : 0);

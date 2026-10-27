@@ -4,7 +4,7 @@
 // puis extensions : MD5, DISPOSITION, LANGUE, LOCATION. Pour text/* : SIZE
 // est suivi de LINECOUNT avant les extensions.
 import { parseBodystructure } from './node_modules/imapflow/dist/esm/tools.js';
-import { collectAttachmentParts, extractMailAddresses, parseWithCharsetRepair } from './lib/mail.js';
+import { collectAttachmentParts, extractMailAddresses, parseWithCharsetRepair, decodePreviewBytes } from './lib/mail.js';
 import { simpleParser } from 'mailparser';
 
 const A = (v) => ({ type: 'ATOM', value: v });
@@ -218,6 +218,35 @@ await runMojibake('M · corps Windows-1252 déclaré utf-8 → réparation',
 
 await runMojibake('N · corps Windows-1252 déclaré us-ascii → réparation',
     Buffer.concat([Buffer.from('From: notifs@uvsq.fr\r\nContent-Type: text/plain; charset=us-ascii\r\n\r\n', 'latin1'), bodyCp1252]));
+
+// ---------- O, P, Q · aperçu des listes : decodePreviewBytes ----------
+// buildPreview ne passe pas par simpleParser : les octets du part texte y sont
+// décodés à la main. Mêmes symptômes que M/N mais sur un autre chemin de code.
+const runPreviewBytes = (label, bytes, expected) => {
+    const got = decodePreviewBytes(bytes);
+    const ok = got === expected && !got.includes('\uFFFD');
+    if (ok) { console.log(`PASS ${label} → ${JSON.stringify(got.slice(0, 60))}`); pass++; }
+    else { console.log(`FAIL ${label}\n  attendu: ${JSON.stringify(expected)}\n  obtenu : ${JSON.stringify(got)}`); fail++; }
+};
+
+// O · même corps Windows-1252 que M (é sur un octet) : la détection UTF-8
+// stricte échoue (0xE9 invalide), le repli Windows-1252 rend l'accent.
+runPreviewBytes('O · aperçu, octets 1252 → repli windows-1252', bodyCp1252,
+    "Les heures de l'événement ont été modifiées de 08:30-10:30 à 10:30-12:30");
+
+// P · vrai UTF-8 intact : décodage strict direct, sans repli (aucune régression
+// pour les emails qui déclarent honnêtement leur charset).
+runPreviewBytes('P · aperçu, UTF-8 honnête → décodage strict',
+    Buffer.from("Les heures de l'événement ont été modifiées de 08:30-10:30 à 10:30-12:30", 'utf8'),
+    "Les heures de l'événement ont été modifiées de 08:30-10:30 à 10:30-12:30");
+
+// Q · coupe au maxBytes en PLEIN milieu du « é » multioctet (0xC3 seul en
+// queue) : l'amputation d'un octet de queue amortit la coupe, zéro U+FFFD.
+// Puis périmé volontairement : au-delà de 3 octets on renvoie le repli 1252
+// (accents convertis en mojibake « Ã© » mais jamais de caractère perdu net).
+const utf8Cropped = Buffer.from("Les heures de l'événement ont été", 'utf8').slice(0, -1);
+runPreviewBytes('Q · aperçu, UTF-8 coupé mid-caractère → amorti', utf8Cropped,
+    "Les heures de l'événement ont ét");
 
 console.log(`\nRésultat : ${pass} pass, ${fail} fail`);
 process.exit(fail > 0 ? 1 : 0);
