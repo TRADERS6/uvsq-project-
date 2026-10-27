@@ -93,6 +93,7 @@ Un vrai widget d'écran d'accueil iOS via l'app gratuite **Scriptable** :
 
 **Harnais de régression (conservés et rejouables)**
 - `f8b9edd` · `front-smoke.mjs` — cohérence statique HTML/JS + 8 cas de classification du lecteur (`1fa293a`)
+- Sonde de production (optionnelle) : `scripts/verify-previews.mjs` compte les « � » dans de vrais aperçus servis par Vercel — `MAIL_USER="…" MAIL_PASS="…" node scripts/verify-previews.mjs` (identifiants passés par l'environnement, jamais stockés dans le dépôt ; `--all` pour les quatre dossiers)
 - `9c3bcfa` · `api-smoke.mjs` — 20 cas de contrat API sans réseau (+1 cas audit d'encodage SMTP du sujet répondu, `255b363`)
 - `684f334` · `debug-attachments.mjs` — 6 structures MIME contre le vrai parser imapflow (`f138cf8`, `89ee4a7` : + cas adresses sans From et RFC 2047 B/Q ; `f097e29` : + cas mojibake M·N ; `255b363` : + cas aperçu O·P·Q ; `43085c1` : + cas HTML-only R·S ; `f046655` : + cas alternative T·U)
 
