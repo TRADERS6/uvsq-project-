@@ -4,7 +4,7 @@
 // puis extensions : MD5, DISPOSITION, LANGUE, LOCATION. Pour text/* : SIZE
 // est suivi de LINECOUNT avant les extensions.
 import { parseBodystructure } from './node_modules/imapflow/dist/esm/tools.js';
-import { collectAttachmentParts, extractMailAddresses, parseWithCharsetRepair, decodePreviewBytes, htmlToText } from './lib/mail.js';
+import { collectAttachmentParts, extractMailAddresses, parseWithCharsetRepair, decodePreviewBytes, htmlToText, findTextPart } from './lib/mail.js';
 import { simpleParser } from 'mailparser';
 
 const A = (v) => ({ type: 'ATOM', value: v });
@@ -267,6 +267,46 @@ const htmlMojibake = Buffer.from(
     '</body></html>', 'latin1');
 runPreviewHtml('R · aperçu HTML-only mojibake → décodé puis débalisé', htmlMojibake,
     "Les heures de l'événement ont été modifiées de 08:30-10:30 à 10:30-12:30");
+
+// ---------- T, U · aperçu multipart/alternative : sélection de la partie ----------
+// Certains expéditeurs envoient une alternative dont la partie text/plain est
+// une coquille VIDE (seul le HTML porte le corps) : findTextPart doit passer
+// la partie vide et choisir le HTML (buildPreview évapore un aperçu vide).
+const runTextPart = (label, bodystructure, expectPart, expectType) => {
+    let structure, node;
+    try {
+        structure = parseBodystructure(bodystructure);
+    } catch (e) {
+        console.log(`FAIL ${label} : parseBodystructure a levé : ${e.message}`);
+        fail++;
+        return;
+    }
+    node = findTextPart(structure);
+    const gotPart = node && node.part, gotType = node && node.type;
+    if (gotPart === expectPart && gotType === expectType) {
+        console.log(`PASS ${label} → part ${gotPart} (${gotType})`);
+        pass++;
+    } else {
+        console.log(`FAIL ${label}\n  attendu: part ${expectPart} (${expectType})\n  obtenu : part ${gotPart} (${gotType})`);
+        fail++;
+    }
+};
+
+// T · plain présente mais vide (size 0) : le HTML gagne
+defineAlternative('T · alternative à plain vide → part HTML', '0', '120', '2', 'text/html');
+
+// U · plain avec un vrai contenu (size 120) : reste la partie choisie, aucune régression
+defineAlternative('U · alternative à plain fournie → part plain', '120', '0', '1', 'text/plain');
+
+function defineAlternative(label, plainSize, htmlSize, expectedPart, expectedType) {
+    runTextPart(label,
+        [
+            [ A('TEXT'), A('PLAIN'), [S('CHARSET'), S('UTF-8')], null, null, S('7BIT'), S(plainSize), S('0') ],
+            [ A('TEXT'), A('HTML'), [S('CHARSET'), S('UTF-8')], null, null, S('7BIT'), S(htmlSize), S('1') ],
+            A('ALTERNATIVE')
+        ],
+        expectedPart, expectedType);
+}
 
 // S · HTML honnête UTF-8 avec entités nommées : htmlToText doit décoder les
 // entités (&eacute; &agrave; &quot;) EN PLUS de décaper balises/style/script —
