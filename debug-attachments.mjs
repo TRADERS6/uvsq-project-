@@ -4,7 +4,7 @@
 // puis extensions : MD5, DISPOSITION, LANGUE, LOCATION. Pour text/* : SIZE
 // est suivi de LINECOUNT avant les extensions.
 import { parseBodystructure } from './node_modules/imapflow/dist/esm/tools.js';
-import { collectAttachmentParts, extractMailAddresses, parseWithCharsetRepair, decodePreviewBytes } from './lib/mail.js';
+import { collectAttachmentParts, extractMailAddresses, parseWithCharsetRepair, decodePreviewBytes, htmlToText } from './lib/mail.js';
 import { simpleParser } from 'mailparser';
 
 const A = (v) => ({ type: 'ATOM', value: v });
@@ -247,6 +247,36 @@ runPreviewBytes('P · aperçu, UTF-8 honnête → décodage strict',
 const utf8Cropped = Buffer.from("Les heures de l'événement ont été", 'utf8').slice(0, -1);
 runPreviewBytes('Q · aperçu, UTF-8 coupé mid-caractère → amorti', utf8Cropped,
     "Les heures de l'événement ont ét");
+
+// ---------- R, S · aperçu d'un mail HTML-ONLY (chemin htmlToText) ----------
+// Un mail sans text/plain : buildPreview descend sur text/html et, une fois
+// les octets décodés, fait htmlToText(text) — on teste cet enchaînement exact.
+const runPreviewHtml = (label, bytes, expected) => {
+    const got = htmlToText(decodePreviewBytes(bytes)); // exactement buildPreview, apart le client IMAP
+    const ok = got === expected && !got.includes('\uFFFD') && !/[<>]/.test(got);
+    if (ok) { console.log(`PASS ${label} → ${JSON.stringify(got.slice(0, 60))}`); pass++; }
+    else { console.log(`FAIL ${label}\n  attendu: ${JSON.stringify(expected)}\n  obtenu : ${JSON.stringify(got)}`); fail++; }
+};
+
+// R · HTML-only mojibake (octets 1252 sous étiquette utf-8, comme M/N/O) : le
+// repli windows-1252 de decodePreviewBytes rend les accents AVANT htmlToText,
+// qui doit décaper balises et style sans toucher au texte désormais propre.
+const htmlMojibake = Buffer.from(
+    '<html><head><style>body{color:red}</style></head><body>' +
+    "<p>Les heures de l&#39;&#233;v&#233;nement ont &#233;t&#233; modifi&#233;es de 08:30-10:30 &#224; 10:30-12:30</p>" +
+    '</body></html>', 'latin1');
+runPreviewHtml('R · aperçu HTML-only mojibake → décodé puis débalisé', htmlMojibake,
+    "Les heures de l'événement ont été modifiées de 08:30-10:30 à 10:30-12:30");
+
+// S · HTML honnête UTF-8 avec entités nommées : htmlToText doit décoder les
+// entités (&eacute; &agrave; &quot;) EN PLUS de décaper balises/style/script —
+// le texte de l'aperçu ne peut jamais contenir ni balise ni entité brute.
+const htmlEntities = Buffer.from(
+    '<html><body><script>alert(1)</script>' +
+    '<p>Heures d&#39;examen confirm&eacute;es &agrave; 10h30 &quot;dans la salle B&quot;</p>' +
+    '</body></html>', 'utf8');
+runPreviewHtml('S · aperçu HTML entités nommées → texte final lisible', htmlEntities,
+    "Heures d'examen confirmées à 10h30 \"dans la salle B\"");
 
 console.log(`\nRésultat : ${pass} pass, ${fail} fail`);
 process.exit(fail > 0 ? 1 : 0);
