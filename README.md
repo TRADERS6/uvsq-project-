@@ -52,13 +52,54 @@ Un vrai widget d'écran d'accueil iOS via l'app gratuite **Scriptable** :
 - 🔒 **Rien n'est stocké sur un serveur** : tes infos restent sur ton téléphone
 - 🌙 Interface sombre, pensée pour le mobile
 
+## 🚀 Première utilisation, pas à pas
+
+1. **Ouvre** `https://uvsq-project.vercel.app` (Safari iPhone, Chrome Android, n'importe quel navigateur sur PC).
+2. **Onboarding** : entre ton **numéro étudiant** → « Voir mon emploi du temps ».
+   - Si le serveur n'a pas d'identifiants ENT partagés (c'est le cas par défaut), un bloc « Mes identifiants ENT (nécessaires) » s'ouvre tout seul : entre ton login ENT (souvent ton n° étudiant) et son mot de passe.
+3. Le statut en haut passe au vert « **En Direct UVSQ (LDAP)** » et tes cours s'affichent. C'est tout.
+
+### Réglages (bouton engrenage) — champ par champ
+
+| Champ | Rôle | Particularités |
+|---|---|---|
+| **ID Étudiant** | Ton fid0 CELCAT, obligatoire | Visible dans l'URL de `edt.uvsq.fr` ; un numéro faux = EDT vide |
+| **CID CELCAT** | Contexte du calendrier du groupe | Laisse la valeur par défaut |
+| **Identifiant ENT UVSQ** | Login LDAP de l'EDT | Souvent ton n° étudiant (CELCAT refuse l'adresse mail comme login) |
+| **Mot de passe ENT UVSQ** | Sert à l'EDT **et** à la messagerie | Copie-colle-le si possible : une faute de frappe = « API UVSQ : erreur » |
+| **Adresse mail UVSQ** (optionnel) | Login de la messagerie Partage | À remplir si ton adresse est au format `prenom.nom@…` (`@etu.uvsq.fr`, `@ens.uvsq.fr`…). Laisse vide si ton adresse est dérivée du n° étudiant (l'app essaie seule `numero@etu.uvsq.fr` puis `numero@uvsq.fr`) |
+| **Notification cours imminent** | Alerte 10 min avant un cours | Demande la permission au moment de l'enregistrement |
+
+> 💡 Les identifiants sont stockés **par appareil** (localStorage) : ce que tu remplis sur PC ne configure pas le téléphone, et inversement.
+
+### Comprendre la pastille de statut (en haut)
+
+| Statut | Signification |
+|---|---|
+| 🟢 « En Direct UVSQ (LDAP) » | Connexion CELCAT réussie, données fraîches |
+| 🟢 « Cache Local (UVSQ) » | Cours servis du cache (< 1 h), toujours le même réseau |
+| 🟠 « Hors-ligne (cache UVSQ) » | API injoignable, dernier EDT connu affiché |
+| 🔴 « API UVSQ : erreur » | Aucun identifiant valide n'a atteint l'API — le détail exact s'affiche sous les cours (message complet de l'API) |
+
+### Dépannage rapide
+
+| Symptôme | Cause probable | Solution |
+|---|---|---|
+| rouge + « Identifiants UVSQ absents » | champs ENT vides sur cet appareil | Réglages → remplis Identifiant + Mot de passe ENT |
+| rouge + « Login ou mot de passe UVSQ refusé » | mot de passe falsé ou expiré | Connecte-toi une fois sur `ent.uvsq.fr` dans un navigateur, puis re-vérifie la saisie |
+| rouge + « UVSQ a déclenché un captcha » | trop d'échecs de connexion consécutifs | Connecte-toi une fois manuellement sur `edt.uvsq.fr`, puis réessaie |
+| curseur chargé puis « aucun cours » | numéro étudiant ne correspond pas au compte ENT | Vérifie l'ID Étudiant (fid0) |
+| « Identifiants refusés » dans la Messagerie | ton adresse UVSQ n'est pas `numero@etu.uvsq.fr` | Réglages → remplis « Adresse mail UVSQ » (ex. `prenom.nom@etu.uvsq.fr`) |
+
+> 🖥️ **Sur PC** : lecteur et composeur de mail s'ouvrent en fenêtre flottante centrée (≥ 768 px), et les modales de réglages défilent — le bouton « Enregistrer » reste accessible sur tout écran.
+
 ## 🗒️ Nouveautés récentes
 
 **Mise à jour d'octobre 2026 — la messagerie bien mieux orchestrée**
 
 - 📮 **Connecté = Messagerie en premier onglet** : dès que tes identifiants existent dans l'app, elle s'ouvre directement sur la messagerie (l'EDT se charge en tâche de fond, toujours accessible en bas).
 - 🔎 **EDT toujours neutre** : en cas d'échec de l'API, la vue affiche « Aucun cours prévu » comme un jour libre — plus de bandeau rouge d'erreur (la trace reste visible dans la console via F12).
-- 🧭 **Connexion simplifiée** : entre ton numéro étudiant seul, l'app essaie automatiquement les formats d'adresse UVSQ (ex. `numero@etu.uvsq.fr`). Si le serveur n'en accepte aucun, elle te dit précisément d'utiliser ton adresse mail complète. Le format gagnant est mémorisé : plus jamais à le ressaisir.
+- 🧭 **Connexion simplifiée** : entre ton numéro étudiant seul, l'app essaie automatiquement les formats d'adresse UVSQ (ex. `numero@etu.uvsq.fr`). Si ton adresse UVSQ est au format `prenom.nom`, un champ dédié « Adresse mail UVSQ » l'attend dans les réglages — plus besoin de tricher avec un seul champ pour deux systèmes. Le format gagnant est mémorisé : plus jamais à le ressaisir.
 - 📖 **Lecteur qui s'adapte au mail** : les publipostages sont marqués « Newsletter », les confirmations de service « UVSQ », les invitations en calendrier « Invitation » — le corps est mis en paragraphes réels pour la lecture au pouce. Un long mail se coupe après ~2 écrans : le bouton « Afficher les mails longs en entier » mémorise ton choix (plus rien n'est coupé ensuite, « Ré-couper » inverse). Avatar coloré à initiales et date relative (« aujourd'hui · 14:32 »).
 - 🖥️ **Bouton « Enregistrer » réparé sur PC** : sur certains navigateurs (Firefox/Safari variants), la demande de permission de notification bloquait la sauvegarde — c'est corrigé, la sauvegarde se fait toujours en premier.
 - 📬 **Serveurs Partage officiels** : connexion désormais pointée vers `partage.uvsq.fr` (IMAP port 993, SMTP port 465) selon la doc UVSQ — cause du « impossible de récupérer les emails » corrigée.
@@ -71,6 +112,11 @@ Un vrai widget d'écran d'accueil iOS via l'app gratuite **Scriptable** :
 ## 📋 Changelog détaillé — la série messagerie (octobre 2026)
 
 *(État vérifié : tous ces commits sont déjà sur `origin/main` — rien n'attend de `git push`. Les harnais cités se rejouent avec `node front-smoke.mjs`, `node api-smoke.mjs`, `node debug-attachments.mjs`.)*
+
+**Fonctionnalités et interface (derniers commits)**
+- `2c13cf7` · champ optionnel « Adresse mail UVSQ » dans les réglages : indispensable pour les adresses non dérivées du n° étudiant (format `prenom.nom@…`, y compris `@ens.uvsq.fr`) — CELCAT refuse l'email comme login LDAP, Partage l'exige
+- `b5c891f` · lecteur et composeur de mail en fenêtre flottante centrée sur desktop (≥ 768 px) au lieu du plein écran — mobile inchangé
+- `fef1048` · modales Réglages/Onboarding défilables : le formulaire dépassait la hauteur d'écran depuis l'ajout du champ mail et coupait le bouton « Enregistrer » ; JS durci face à un HTML périmé du cache PWA (précache `v23`)
 
 **Fonctionnalités messagerie**
 - `1ce6b0f` · dossiers Partage complets (réception, envoyés, spam, corbeille), alimentés par la découverte IMAP automatique, caches séparés par dossier
