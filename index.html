@@ -385,7 +385,7 @@
     </div>
 
     <!-- MAIL READER : lecture plein écran -->
-    <div id="mail-reader" class="fixed inset-0 z-50 bg-slate-950 flex flex-col hidden">
+    <div id="mail-reader" class="fixed inset-0 z-50 bg-slate-950 flex flex-col hidden md:inset-4 md:max-w-3xl md:mx-auto md:rounded-3xl md:border md:border-slate-800 md:shadow-2xl md:overflow-hidden">
         <div class="relative bg-slate-900/90 backdrop-blur-xl border-b border-slate-800 px-4 py-3 flex items-center gap-2 flex-shrink-0" style="padding-top: calc(env(safe-area-inset-top) + 0.75rem);">
             <button onclick="closeMailReader()" class="p-2 rounded-xl bg-slate-800/80 hover:bg-slate-700 text-slate-300 hover:text-white transition active:scale-90 border border-slate-700/50">
                 <i class="fa-solid fa-arrow-left"></i>
@@ -424,7 +424,7 @@
     </div>
 
     <!-- MAIL COMPOSE : rédaction plein écran -->
-    <div id="mail-compose" class="fixed inset-0 z-50 bg-slate-950 flex flex-col hidden">
+    <div id="mail-compose" class="fixed inset-0 z-50 bg-slate-950 flex flex-col hidden md:inset-4 md:max-w-3xl md:mx-auto md:rounded-3xl md:border md:border-slate-800 md:shadow-2xl md:overflow-hidden">
         <div class="bg-slate-900/90 backdrop-blur-xl border-b border-slate-800 px-4 py-3 flex items-center gap-2 flex-shrink-0" style="padding-top: calc(env(safe-area-inset-top) + 0.75rem);">
             <button onclick="closeCompose()" class="p-2 rounded-xl bg-slate-800/80 hover:bg-slate-700 text-slate-300 hover:text-white transition active:scale-90 border border-slate-700/50" title="Annuler">
                 <i class="fa-solid fa-xmark"></i>
