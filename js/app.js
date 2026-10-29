@@ -42,7 +42,9 @@ function loadSettings() {
     document.getElementById('cfg-cid').value = appConfig.cid;
     document.getElementById('cfg-api-user').value = appConfig.apiUser;
     document.getElementById('cfg-api-pass').value = appConfig.apiPass;
-    document.getElementById('cfg-mail-user').value = appConfig.mailUser || '';
+    //HTML périmé (cache PWA) sans le champ mail : ne jamais bloquer le reste
+    const mailUserInput = document.getElementById('cfg-mail-user');
+    if (mailUserInput) mailUserInput.value = appConfig.mailUser || '';
     document.getElementById('cfg-notify').checked = !!appConfig.notify;
 }
 
@@ -95,7 +97,7 @@ function saveSettings(e) {
     appConfig.cid = /^-?[0-9;]+$/.test(cidRaw) && cidRaw ? cidRaw : '-1742253826;1073733534;175432540;108';
     appConfig.apiUser = document.getElementById('cfg-api-user').value.trim();
     appConfig.apiPass = document.getElementById('cfg-api-pass').value;
-    appConfig.mailUser = document.getElementById('cfg-mail-user').value.trim();
+    appConfig.mailUser = document.getElementById('cfg-mail-user')?.value?.trim() || '';
     appConfig.sourceMode = 'API';
 
     const notifyWanted = document.getElementById('cfg-notify').checked;
@@ -139,7 +141,8 @@ function clearCredentials() {
     mailData = [];
     document.getElementById('cfg-api-user').value = '';
     document.getElementById('cfg-api-pass').value = '';
-    document.getElementById('cfg-mail-user').value = '';
+    const mailUserInput = document.getElementById('cfg-mail-user');
+    if (mailUserInput) mailUserInput.value = '';
     timetableData = [];
     toggleSettingsModal(false);
     updateStatus('Déconnecté', 'rose');
