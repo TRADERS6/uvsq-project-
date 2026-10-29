@@ -353,7 +353,13 @@
                 <div>
                     <label class="block text-xs font-semibold text-slate-300 mb-1.5">Mot de passe ENT UVSQ</label>
                     <input type="password" id="cfg-api-pass" autocomplete="off" placeholder="••••••••" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-brand-500 transition font-mono">
-                    <p class="text-[11px] text-slate-500 mt-1">Stocké sur votre téléphone, transmis chiffré à /api/edt et à /api/mail (e-mails Partage). La messagerie attend une adresse : tu peux ne taper que ton n° étudiant — l'app essaie automatiquement numero@etu.uvsq.fr puis numero@uvsq.fr, et si le serveur les refuse utilise ton adresse mail complète (ex : prenom.nom@etu.uvsq.fr). Alternative serveur : CELCAT_USERNAME / CELCAT_PASSWORD dans Vercel.</p>
+                    <p class="text-[11px] text-slate-500 mt-1">Utilisé pour l'EDT (login ldap edt.uvsq.fr). Sert aussi à la messagerie : avec ton n° étudiant, l'app essaie automatiquement numero@etu.uvsq.fr puis numero@uvsq.fr. Si ton adresse mail UVSQ est au format prenom.nom, renseigne-la dans le champ ci-dessous.</p>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-300 mb-1.5">Adresse mail UVSQ (messagerie)</label>
+                    <input type="text" id="cfg-mail-user" placeholder="ex : prenom.nom@etu.uvsq.fr" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-brand-500 transition font-mono">
+                    <p class="text-[11px] text-slate-500 mt-1">Optionnel. Ton adresse complète UVSQ telle qu'attendue par Partage (ex : adriel-kynan.tounga-nana@ens.uvsq.fr). Laisse vide si ta messagerie fonctionne déjà avec le n° étudiant ; le mot de passe est le même (mot de passe ENT).</p>
                 </div>
 
                 <div class="flex items-center justify-between gap-3 bg-slate-950/60 border border-slate-800 rounded-xl px-3.5 py-2.5">

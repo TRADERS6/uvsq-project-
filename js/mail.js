@@ -74,8 +74,11 @@ function mailCacheKey() {
 // formats « numero@etu.uvsq.fr » / « numero@uvsq.fr » et nous renvoie le
 // format gagnant (rememberLogin) — plus aucune saisie supplémentaire.
 function getMailCreds() {
+    // Priorité : format découverte par le serveur (mailLogin), puis l'adresse
+    // Partage saisie explicitement dans les réglages (mailUser), puis l'legacy
+    // du numéro étudiant (l'API essaie seul numero@etu.uvsq.fr / @uvsq.fr).
     return {
-        user: appConfig.mailLogin || appConfig.apiUser || '',
+        user: appConfig.mailLogin || appConfig.mailUser || appConfig.apiUser || '',
         pass: appConfig.apiPass || ''
     };
 }

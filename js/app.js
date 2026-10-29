@@ -8,6 +8,7 @@ let appConfig = {
     sourceMode: 'API',
     apiUser: '',
     apiPass: '',
+    mailUser: '',
     mailLogin: ''
     // Une seule connexion : les identifiants ENT servent aussi à la
     // messagerie. mailLogin est interne : le format de login Partage que le
@@ -41,6 +42,7 @@ function loadSettings() {
     document.getElementById('cfg-cid').value = appConfig.cid;
     document.getElementById('cfg-api-user').value = appConfig.apiUser;
     document.getElementById('cfg-api-pass').value = appConfig.apiPass;
+    document.getElementById('cfg-mail-user').value = appConfig.mailUser || '';
     document.getElementById('cfg-notify').checked = !!appConfig.notify;
 }
 
@@ -93,6 +95,7 @@ function saveSettings(e) {
     appConfig.cid = /^-?[0-9;]+$/.test(cidRaw) && cidRaw ? cidRaw : '-1742253826;1073733534;175432540;108';
     appConfig.apiUser = document.getElementById('cfg-api-user').value.trim();
     appConfig.apiPass = document.getElementById('cfg-api-pass').value;
+    appConfig.mailUser = document.getElementById('cfg-mail-user').value.trim();
     appConfig.sourceMode = 'API';
 
     const notifyWanted = document.getElementById('cfg-notify').checked;
@@ -124,6 +127,7 @@ function clearCredentials() {
     if (!confirm('Effacer vos identifiants UVSQ et les cours mis en cache de cet appareil ?')) return;
     appConfig.apiUser = '';
     appConfig.apiPass = '';
+    appConfig.mailUser = ''; // adresse Partage (messagerie) : purgée avec les identifiants
     appConfig.mailLogin = ''; // découvert au fil des connexions : purgé avec les identifiants
     localStorage.setItem('uvsq_edt_config', JSON.stringify(appConfig));
     Object.keys(localStorage).filter(k => k.startsWith('uvsq_edt_api_')).forEach(k => localStorage.removeItem(k));
@@ -135,6 +139,7 @@ function clearCredentials() {
     mailData = [];
     document.getElementById('cfg-api-user').value = '';
     document.getElementById('cfg-api-pass').value = '';
+    document.getElementById('cfg-mail-user').value = '';
     timetableData = [];
     toggleSettingsModal(false);
     updateStatus('Déconnecté', 'rose');
